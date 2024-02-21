@@ -1,6 +1,7 @@
 #!/usr/bin/lua
 local ctrlrEnv = require 'ctrlib.CtrlrEnv'
 local dataUtils = require 'ctrlib.utils.DataUtils'
+local SysexP2K = require 'ctrlib.data.SysexP2K'
 local SysexParser = require 'ctrlib.utils.SysexParser' -- instantiate via function call - LOCAL
 -- local sysexUtils = require 'ctrlib.utils.SysexParser' -- instantiate via function call - LOCAL
 
@@ -33,19 +34,19 @@ test1()
 -- instantiate the utility object that: holds sysex Specs and incoming message dumps
 -- local sysexUtils = sysexParser:new()
 -- local sysexUtils = SysexParser.SysexDumps:new()
-local sysexUtils = SysexParser.SysexDumps
+local sysexP2KDumps = SysexP2K.SysexDumps
 --[[
     ]]--
 -- update the util with a SetupDump message
-sysexUtils.SysexSetupDump_1C = SysexParser.parseSyxToTable(SysexParser.sysexMessageSetupDump)
+sysexP2KDumps.SysexSetupDump_1C = SysexParser.parseSyxToTable(SysexParser.sysexMessageSetupDump)
 -- now search the same SetupDumpSpec_1C in the utility
-local result = SysexParser.fetchSysexParam2Byte(sysexUtils.SysexSetupDump_1C,sysexUtils.SysexSetupDumpSpec_1C.MIDI_A_CONTROL)
+local result = SysexParser.fetchSysexParam2Byte(sysexP2KDumps.SysexSetupDump_1C,sysexP2KDumps.SysexSetupDumpSpec_1C.MIDI_A_CONTROL)
 -- local sortedTable = tableSort(sysexUtils.SetupDumpSpec_1C)
 
 
 -- fetchDumpToValueTable test that scans sysexdump using DumpSpec, then create valueTable for each Parameter Field
 -- local valueTable = fetchDumpToValueTable(sysexUtils.SysexSetupDump_1C, SysexSetupDumpSpec_1C)
-local valueTable = SysexParser.fetchDumpToValueTable(sysexUtils.SysexSetupDump_1C, sysexUtils.SysexSetupDumpSpec_1C)
+local valueTable = SysexParser.fetchDumpToValueTable(sysexP2KDumps.SysexSetupDump_1C, sysexP2KDumps.SysexSetupDumpSpec_1C)
 SysexParser.printValueTable(valueTable)
 
 
