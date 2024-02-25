@@ -1,24 +1,33 @@
 #!/usr/bin/lua
 local ctrlrEnv = require 'ctrlib.CtrlrEnv'
-local dataUtils = require 'ctrlib.utils.DataUtils'
-local SysexP2K = require 'ctrlib.data.SysexP2K'
-local SysexParser = require 'ctrlib.utils.SysexParser' -- instantiate via function call - LOCAL
+local dataUtils = require 'ctrlib.Utils.DataUtils'
+local SysexP2K = require 'ctrlib.Data.SysexP2K'
+local MockComponents = require 'ctrlib.Mocks.MockComponents'
+local SysexParser = require 'ctrlib.Utils.SysexParser' -- instantiate via function call - LOCAL
 -- local sysexUtils = require 'ctrlib.utils.SysexParser' -- instantiate via function call - LOCAL
 
 print("CtrlrApp: HI! Ctrlr")
 
 
--- syx = SysexParser {}
--- . syntax
--- sysexUtils.globalFunction()
--- sysexUtils.localFunction()
--- SysexParser.globalFunction()
--- SysexParser.localFunction()
--- : syntax
--- sysexUtils:globalFunction()
--- sysexUtils:localFunction()
--- SysexParser:globalFunction()
--- SysexParser:localFunction()
+MockComponents.buildMockComponents()
+
+print(tostring(#mockComponents))
+
+
+--[[ SysexParser Tests
+
+    syx = SysexParser {}
+    . syntax
+    sysexUtils.globalFunction()
+    sysexUtils.localFunction()
+    SysexParser.globalFunction()
+    SysexParser.localFunction()
+    : syntax
+    sysexUtils:globalFunction()
+    sysexUtils:localFunction()
+    SysexParser:globalFunction()
+    SysexParser:localFunction()
+    ]]
 
 
 local function test1()
@@ -48,6 +57,10 @@ local result = SysexParser.fetchSysexParam2Byte(sysexP2KDumps.SysexSetupDump_1C,
 -- local valueTable = fetchDumpToValueTable(sysexUtils.SysexSetupDump_1C, SysexSetupDumpSpec_1C)
 local valueTable = SysexParser.fetchDumpToValueTable(sysexP2KDumps.SysexSetupDump_1C, sysexP2KDumps.SysexSetupDumpSpec_1C)
 SysexParser.printValueTable(valueTable)
+
+
+
+
 
 
 

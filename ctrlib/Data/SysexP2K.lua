@@ -1,5 +1,6 @@
 #!/usr/bin/lua
 SysexP2K = {}
+-- local sysexemu = {}
 
 
 --[[ DEVICE STATUS ]]--

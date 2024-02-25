@@ -238,6 +238,15 @@ local function stringToTable(valueString)
 end
 
 
+--[[
+If you store your format string locally you can call the format method on to the format string and the example of @Henri results in ("%06x"):format(0xffff)
+print(("%06x"):format(0xffff)) -- Prints `00ffff`
+You can write numbers in hex format. It is the same as C.
+To switch between left pad you can use + e.g. ("%+6x") and for the right pad ("%-6x")
+
+]]--
+
+
 --[[ output utils ]]--
 
 ---Print a table's content to console with specified delimeter ("," is default)
@@ -394,7 +403,9 @@ local function tableSortAndReturn(unsortedTable)
     return sortedTable
 end
 
---[[ string contains ]]--#region
+
+
+--[[ string contains ]]--
 
 ---search a string for string value
 ---@param haystack any - value to search in
@@ -412,6 +423,67 @@ local function isContains(haystack,needle,startAt,boolPlain)
         return true
     end
 end
+
+--[[ string find last match ]]--
+
+--find last occurence of a search pattern in provided string <br/>
+---for subsequent substring operations<br/>
+--- from found index to string   end: string.sub(param,FOUND_INDEX+1,#haystack)<br/>
+--- from found index to string start: string.sub(param,0,FOUND_INDEX-1)<br/>
+--- default needle = '_'
+---@param haystack any - value to search
+---@param needle any - search term
+---@return integer - . return the integer index integer of the last match found, if any. otherwise return 'nil'
+function findLast(haystack, needle)
+    needle = needle or '_'
+    local i=haystack:match(".*"..needle.."()")
+    if i==nil then return nil else return i-1 end
+end
+
+--[[ extract string end ]]--
+
+---Get end of string after LAST occurrence of a search term<br/>
+---Used to extract a parameter number from a parameter identifier with the id appended (ie: PARAM_NAME_ID)<br/>
+---peforms a find, adds+1 to found index, performs string.substring(haystack,FOUND+1,#haystack)<br/>
+--- ex: (ie: PARAM_NAME_ID) => (ie: PARAM_NAME_ [ID])
+---@param param any
+---@return string - . return end of string, if any, else empty string
+function getStringMatchToEnd(param,delimeter)
+    delimeter = delimeter or '_'
+    local first = findLast(param,delimeter)+1
+    if first then
+        local last = #param
+        local result = string.sub(param,first,last)
+        print("Result: ["..tostring(result).."]")
+        return result
+    end
+    return ""
+end
+
+--[[ extract string start ]]--
+
+---Get started of string before LAST occurrence of a search term<br/>
+---Used to extract a parameter name from a parameter identifier where its ID is appended after '_' (ie: PARAM_NAME_ID)<br/>
+---peforms a find, subtracts '11' to found index, performs string.substring(haystack,0,FOUND-1)<br/>
+--- ex: (ie: PARAM_NAME_ID) => (ie: [PARAM_NAME]_ID)
+function getStringStartToMatch(param,delimeter)
+    delimeter = delimeter or '_'
+    local last = findLast(param,delimeter)-1
+    if last then
+        local first = 0
+        local result = string.sub(param,first,last)
+        print("Result: ["..tostring(result).."]")
+    end
+end
+
+--[[  string extraction tests
+    local paramName = "PRESET_NAME_CHAR_0_899"
+    local paramNameStart = "_PRESETNAMECHAR0899"
+    local paramNameEnd = "PRESETNAMECHAR0899_"
+    getStringStartToMatch(paramName)
+    getStringMatchToEnd(paramName)
+]]--
+
 
 
 --[[ isContains tests ]]--
