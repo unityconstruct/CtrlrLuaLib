@@ -1,0 +1,7 @@
+{
+    "Lua.runtime.path": [
+        "?.lua",
+        "?/init.lua",
+        "${workspaceFolder} ${/}ctrlib/?.lua"
+    ]
+}
