@@ -24,7 +24,7 @@ end
 --- @param modulatorName string of the modulator name
 -- @return CtrlrComponent return a panel modulator
 function showModulator(modulatorName, boolOnOff)
-	panel:getComponent("grpMainVoice5"):setProperty("componentVisibility") = true
+	panel:getComponent("grpMainVoice5"):setProperty("componentVisibility")
 
 	--return getModulatorValueByName(modulatorName)
 	--return getModulatorValueByName(modulatorName)

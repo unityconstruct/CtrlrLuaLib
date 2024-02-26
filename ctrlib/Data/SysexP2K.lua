@@ -3,74 +3,27 @@ SysexP2K = {}
 -- local sysexemu = {}
 
 
---[[ DEVICE STATUS ]]--
-local DEVICE_ID = 00
-local BANK_ID = 00
+--[[
 
-
---[[ SYSEX DEVICE INFO ]]--
-
-local DEVICE_FAMILY = {
-    MusicalInstrumentsMSB = 0x04,
-    ROMPlayersLSB = 0x04
-}
-
-local DEVICE_MEMBERS = {
-    Proteus2000SeriesMSB = 0x00,
-    Audity2000LSB = 0x02,
-    Proteus2000LSB = 0x03,
-    B3LSB = 0x04,
-    XL1LSB = 0x05,
-    Virtuoso2000LSB = 0x06,
-    MoPhattLSB = 0x07,
-    B3TurboLSB = 0x08,
-    XL1TurboLSB = 0x09,
-    MoPhattTurboLSB = 0x0A,
-    PlanetEarthLSB = 0x0B,
-    PlanetEarthTurboLSB = 0x0C,
-    XL7LSB = 0x0D,
-    MP7LSB = 0x0E,
-    Proteus2500LSB = 0x0F,
-    Orbit3LSB = 0x10,
-    PK6LSB = 0x11,
-    XK6LSB = 0x12,
-    MK6LSB = 0x13,
-    HaloLSB = 0x14,
-    Proteus1000LSB = 0x15,
-    VintageProLSB = 0x16
-}
-
---[[ ROMS/BANKS ]]--
-
-local ROMS = {
-    XL7 = 0x3e,
-    USER = 0x00
-}
-
-local BANK_SELECT = {
-    BANK_CURRENT = ROMS.USER,
-    CC0 = "b000",
-    CC32 = "00200",
---[[ CC0,CC32,ProgramChange Notes
--- xl7
-b0 00 0e -- b0|00 => CC0
-b0 20 00 -- b0|20 => CC32
-c02 30 0 -- c0|   => Program Change
---
-b0 00 0e
-b0 20 00
-c0 24 00
--- user
-b0 00 00
-b0 20 00
-c0 24 00
--- user patch 64
-b0 00 00
-b0 20 00
-c0 40 00
-]]--
-}
-
+    local LayerSelect
+    - Layer Select: `898` (02h,07h) - `02 07` - values `00-03` [1-4]
+    ```lua
+    
+    F0180F00550102 02 07 00 00 F7
+    F0180F00550102 02 07 01 00 F7
+    F0180F00550102 02 07 02 00 F7
+    F0180F00550102 02 07 03 00 F7
+    F0180F00550102 00 00 F7
+    ```
+    - Preset Select: `897` (01h,07h) min = -1; max = 255
+    ```lua
+    F0180F00550102 01 07 00 00 F7
+    F0180F00550102 01 07 01 00 F7
+    F0180F00550102 01 07 02 00 F7
+    F0180F00550102 01 07 03 00 F7
+    ```
+]]
+    
 
 --[[ data tables ]]--
 
@@ -647,6 +600,28 @@ function SysexSetupDumpSpec_1C:new()
     return self
 end
 
+
+
+DeviceStatus = {}
+function DeviceStatus:new(o)
+    o = o or {}
+    setmetatable({},self)
+    self.__index = self
+
+    self.MultiModeChannel = 1
+    self.MultiModeBasicChannel = 1
+    self.MultiModePrest = 0
+    self.MultiModeBank = 0
+    self.MulitModeRom = 0
+
+
+
+
+    return self
+
+end
+
+
 --[[ ALL DUMPS OBJECT ]]--
 
 SysexDumps = {}
@@ -656,6 +631,82 @@ SysexDumps = {}
 ---@return table - table storing all dump tables
 function SysexDumps:new()
     setmetatable({},SysexDumps)
+
+    --[[ hardward enums ]]--
+    self.DEVICE_MEMBERS = {
+        Proteus2000SeriesMSB = 0x00,
+        Audity2000LSB = 0x02,
+        Proteus2000LSB = 0x03,
+        B3LSB = 0x04,
+        XL1LSB = 0x05,
+        Virtuoso2000LSB = 0x06,
+        MoPhattLSB = 0x07,
+        B3TurboLSB = 0x08,
+        XL1TurboLSB = 0x09,
+        MoPhattTurboLSB = 0x0A,
+        PlanetEarthLSB = 0x0B,
+        PlanetEarthTurboLSB = 0x0C,
+        XL7LSB = 0x0D,
+        MP7LSB = 0x0E,
+        Proteus2500LSB = 0x0F,
+        Orbit3LSB = 0x10,
+        PK6LSB = 0x11,
+        XK6LSB = 0x12,
+        MK6LSB = 0x13,
+        HaloLSB = 0x14,
+        Proteus1000LSB = 0x15,
+        VintageProLSB = 0x16
+    }
+
+
+    --[[ DEVICE STATUS ]]--
+    self.DEVICE_ID = 00
+    self.BANK_ID = 00
+
+
+    --[[ SYSEX DEVICE INFO ]]--
+
+    self.DEVICE_FAMILY = {
+        MusicalInstrumentsMSB = 0x04,
+        ROMPlayersLSB = 0x04
+    }
+
+
+
+    --[[ ROMS/BANKS ]]--
+
+    self.ROMS = {
+        XL7 = 0x3e,
+        USER = 0x00
+    }
+
+    self.BANK_SELECT = {
+        BANK_CURRENT = ROMS.USER,
+        CC0 = "b000",
+        CC32 = "00200",
+    --[[ CC0,CC32,ProgramChange Notes
+    -- xl7
+    b0 00 0e -- b0|00 => CC0
+    b0 20 00 -- b0|20 => CC32
+    c02 30 0 -- c0|   => Program Change
+    --
+    b0 00 0e
+    b0 20 00
+    c0 24 00
+    -- user
+    b0 00 00
+    b0 20 00
+    c0 24 00
+    -- user patch 64
+    b0 00 00
+    b0 20 00
+    c0 40 00
+    ]]--
+    }
+
+
+
+
 
     --[[ field notes
         for each dump type, there's 2 fields:

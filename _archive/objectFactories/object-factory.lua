@@ -17,7 +17,6 @@ function createMod (modId,modName,paramMSB,paramLSB)
 end
 
 --- print modulator object fields
----@param mod modBase
 function printMod (mod)
     print("modId   : " .. mod.modId)
     print("modName : " .. mod.modName)
