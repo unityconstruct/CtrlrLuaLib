@@ -515,11 +515,15 @@ function RequestModel:new(o)
     --- @return string - . return the haystack with replaced values
     self.fetchDataUsingMask = function(haystack,mask,needle)
         local first,last = string.find(mask,needle,1,true)
-        local result = string.sub(haystack,first,last)
-        local msg = string.format("Search dump:[%s] using mask:[%s] on needle: [%s] Found start:[%d] end:[%d] result:[%s]",haystack,mask,needle,first,last,result)
-        print(msg)
-        if (result == "nil") then return ""
-        else return result
+        if (first ~= nil or last ~= nil) then
+            first = first or 1
+            local result = string.sub(haystack,first,last)
+            local msg = string.format("Search dump:[%s] using mask:[%s] on needle: [%s] Found start:[%d] end:[%d] result:[%s]",haystack,mask,needle,first,last,result)
+            print(msg)
+            if (result == nil) then return ""
+                else return result
+            end
+        else return haystack
         end
     end
 
