@@ -65,6 +65,19 @@ function SetDataUsingMask(haystack,needle,replaceWithData)
 end
 
 
+--[[ Utilty Object for packing all utils in one place ]]--
+
+local DataUtils = {}
+function DataUtils:new(o)
+    o = o or {}
+    setmetatable({},self)
+    self.__index = self
+    return self 
+end
+local dataUtils = DataUtils:new()
+
+
+
 
 --[[ RequestModel holding ALL requests & builder/util functions ]]--
 
@@ -517,21 +530,23 @@ function RequestModel:new(o)
     --- @return string - . returns the haystack with replacements made
     self.setDataUsingMask = function(haystack,needle,replaceWithData)
         local result = string.gsub(haystack,needle,replaceWithData,1)
-        local msg = string.format("Update dump:[%s] replacing:[%s] with data: [%s] result:[%s]",haystack,needle,replaceWithData,result)
-        print(msg)
-        if (result == "nil") then return ""
-        else return haystack -- return the data without changes
+        if (result == "nil") then return haystack
+        else
+            local msg = string.format("Update dump:[%s] replacing:[%s] with data: [%s] result:[%s]",haystack,needle,replaceWithData,result)
+            print(msg)
+            return result -- return the data without changes
         end
     end
 
-
+    ---Build complete Set Parameter Request
+    ---@param paramId string - hexstring ParamId
+    ---@param paramValue string - hexstring ParamValue
+    ---@return string - full Set Parameter sysex message ready for wrapping header/footer & sending
     self.buildPaParameterEditRequest = function(paramId,paramValue)
         local result = self.setDataUsingMask(self.ParameterEditRequestCommands[0][1],self.ParameterEditRequestCommands[3][1],paramId)
         result = self.setDataUsingMask(result,self.ParameterEditRequestCommands[4][1],paramValue)
         return result
-
     end
-
 
     self.buildSetMultiModeRomId = function()
         -- local request = self.[0]
@@ -540,16 +555,23 @@ function RequestModel:new(o)
         -- print(string.format("Built Request: [%s]",request))
         -- return request
     end
-    
-    
+
+    --[[ pending functions ]]--
+    self.dataNibblizeData = function() end
+    self.dataDeNibblizeData = function() end
+    self.dataDec2Hex = function () end
+    self.dataHex2Dec = function () end
 
     return self
 end
 
+
+
+
 --[[ tests ]]--
 
 
---[[ RequestModel Tests]]
+--[[ RequestModel Tests ]]--
 local reqModel = RequestModel:new()
 -- test table access
 print(reqModel.ParameterEditRequestCommands[0][1])
@@ -563,12 +585,10 @@ local result = reqModel.fetchDataUsingMask(resp1,
     reqModel.PresetDumpHeaderClosedLoopResponse[3][1])
 print(result)
 result = reqModel.ParameterEditRequest[0][1]
-
-
+print(result) -- 9999
+-- build a complte ParameterSet Message using RequestModlinternal function
 local msg = reqModel.buildPaParameterEditRequest("0A01","0109")
 print(msg)
-
-
 
 
 --[[ PoC model for creating a request tables that can be used to creat messages or parse responses ]]--
