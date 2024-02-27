@@ -573,28 +573,28 @@ end
 
 
 --[[ tests ]]--
-
-
---[[ RequestModel Tests ]]--
-local reqModel = RequestModel:new()
--- test table access
-print(reqModel.ParameterEditRequestCommands[0][1])
-
--- test internal fetchDataUsingMask()
-local resp = "1001aaaabbbbbbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmm"
-local resp1 = "10019999bbbbbbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmm"
-
-local result = reqModel.fetchDataUsingMask(resp1,
+function RequestModelTests()
+    --[[ RequestModel Tests ]]--
+    local reqModel = RequestModel:new()
+    -- test table access
+    print(reqModel.ParameterEditRequestCommands[0][1])
+    
+    -- test internal fetchDataUsingMask()
+    local resp = "1001aaaabbbbbbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmm"
+    local resp1 = "10019999bbbbbbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmm"
+    
+    local result = reqModel.fetchDataUsingMask(resp1,
     reqModel.PresetDumpHeaderClosedLoopResponse[0][1],
     reqModel.PresetDumpHeaderClosedLoopResponse[3][1])
-print(result)
-result = reqModel.ParameterEditRequest[0][1]
-print(result) -- 9999
--- build a complte ParameterSet Message using RequestModlinternal function
-local msg = reqModel.buildPaParameterEditRequest("0A01","0109")
-print(msg)
+    print(result)
+    result = reqModel.ParameterEditRequest[0][1]
+    print(result) -- 9999
+    -- build a complte ParameterSet Message using RequestModlinternal function
+    local msg = reqModel.buildPaParameterEditRequest("0A01","0109")
+    print(msg)
+end
 
-
+RequestModelTests()
 --[[ PoC model for creating a request tables that can be used to creat messages or parse responses ]]--
 
 

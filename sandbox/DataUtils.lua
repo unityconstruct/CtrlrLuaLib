@@ -116,10 +116,12 @@ function DataUtils:new(o)
         value = value + 16384
     end
 
-    local lsb = value % 128
-    local msb = value / 128
-    nibble[1] = msb
-    nibble[2] = lsb
+    local lsb = math.floor(value % 128)
+    local msb = math.floor(value / 128)
+    -- nibble.lsb = lsb
+    -- nibble.msb = msb
+    nibble[1] = lsb
+    nibble[2] = msb
     return nibble
 
   end
@@ -134,7 +136,7 @@ function DataUtils:new(o)
 
     -- if number is greate than 8192, its a negative value
     if (rawValue >= 8192 ) then
-        value = 8192-16257        
+        value = 8192-16257
     else
         value = rawValue
     end
@@ -143,11 +145,11 @@ function DataUtils:new(o)
   end
 
   --- convert a nibble(msb/lsb) to integer value
-  --- @param nibble integer 
+  --- @param nibble table
   --- @return integer value
-  self.DeNibblizeInt = function(nibble)
+  self.DeNibblizeTable = function(nibble)
     if ( #nibble == 2 ) then
-        return DeNibblize(nibble[0], nibble[1])
+        return self.DeNibblizeLSBMSB(nibble[1], nibble[2])
     else
         return 0
     end
@@ -214,7 +216,6 @@ function DataUtils:new(o)
       return tostring(value)
   end
 
-
   --- coverts table to delimited string
   --- @param valueTable table table to convert to string
   --- @param separator string separator character
@@ -227,13 +228,56 @@ function DataUtils:new(o)
   --- coverts table to delimited string using separator ","
   --- @param valueTable table
   --- @return string
-  function TableToString(valueTable)
+  self.TableToString = function(valueTable)
       return self.TableToStringWithDelimiter(valueTable,",")
+  end
+
+
+  self.Int2Hex128 = function(valueInt128)
+    return string.format("%2.x",valueInt128)
+  end
+
+  self.Int2Hex256 = function(valueInt256)
+    return string.format("%04x",valueInt256)
+  end
+
+
+  self.Int2Char = function(value)
+    return string.char(value)
+  end
+
+  ---print to console
+  ---@param data any
+  self.p = function(data)
+    data = data or "error: nothing to print"
+    print(tostring(data))
   end
 
   return self
 end
 
+--[[ tests ]]--
+
+function DataUtilsTests()
+  local du = DataUtils:new()
+  local result
+  result = du.DeNibblizeTable({1,1})
+  du.p(result) --129
+
+  result = du.Nibblize(128)
+  resultTable = table.concat(result,",")
+  du.p(result) -- table: 0x558499c41950
+  du.p(resultTable) -- 0,1
+  
+  result = du.nibblize14bit(129)
+  du.p(string.format("LSB:[%d] MSB:[%d]",result.lsb,result.msb))
+  du.p(string.format("LSB:[%.2x] MSB:[%.2x]",result.lsb,result.msb))
+  du.p(du.Int2Hex128(120))
+  du.p(du.Int2Hex256(120))
+  du.p(du.Int2Hex256(259))
+end
+
+-- DataUtilsTests()
 
 return {
   DataUtils:new()
