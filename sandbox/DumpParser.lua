@@ -520,11 +520,11 @@ function RequestModel:new(o)
         self.HardwareConfigurationResponse[8] = {"gggg","Number of Sim Instruments"}
         
         self.fetchDataUsingPosition = function(msg,startIndex,length)
-            local nextIndex = startIndex+length-1
-            local result = string.sub(msg,startIndex,nextIndex)
+            local nextIndex = startIndex+length  -- moves pointer forward for next iteration
+            local endIndex = startIndex+length-1 -- string.sub() uses start/end pos , not start/len, so subtract (-1)
+            local result = string.sub(msg,startIndex,endIndex)
             return result, nextIndex
         end
-
 
         self.HardwareConfigurationResponseData = {
             mask = self.HardwareConfigurationResponse[0][1],    -- [0]
@@ -535,17 +535,8 @@ function RequestModel:new(o)
             simCount = "",        -- [4]
             ---@type string
             simBytesPer = "",     -- [5]
-            
-            --- single simData object for building simDataTable: NOT FOR STORING DATA DIRECTLY 
-            -- fields [6,7,8]
-            -- simSimPresetsMask = string.format("%s,%s,%s",
-            --     self.HardwareConfigurationResponse[6][1], --eeee
-            --     self.HardwareConfigurationResponse[7][1], --ffff
-            --     self.HardwareConfigurationResponse[8][1]  --gggg
-            -- ),
-
             ---@type table
-            simDataTable = {                    -- [6,7,8]
+            simDataTable = {                   -- [6,7,8]
                 ---@type string
                 simID = "",                -- [6]
                 ---@type string            
@@ -556,8 +547,6 @@ function RequestModel:new(o)
             --- table of simData objects
             ---@type table
             simDataTableList = {},             -- [6,7,8]
-
-
             -- getter functions
             getUserPresetCount = function(msg)
                 return self.fetchDataUsingMask(msg,
@@ -565,21 +554,18 @@ function RequestModel:new(o)
                     self.HardwareConfigurationResponseData[3]
                 )
             end,
-
             getSimCount = function(msg)
                 return self.fetchDataUsingMask(msg,
                     self.HardwareConfigurationResponseData.mask,
                     self.HardwareConfigurationResponseData[4]
                 )
             end,
-
             ---iterator for collecting data for multiple simms
             ---@param msg string - response message
             ---@param simcount integer - number of simms to iterate
             simDataIterator = function(msg,simcount)
-    
                 -- used provided simcount, or try the *Data simCount field
-                simcount = simcount or self.du.hex2IntBase16(self.HardwareConfigurationResponseData.simCount)
+                local count = simcount or self.du.hex2IntBase16(self.HardwareConfigurationResponseData.simCount)
                 -- get pointer for the last position before iterator
                 local _, endIndex = string.find(
                     self.HardwareConfigurationResponse[0][1],
@@ -590,7 +576,7 @@ function RequestModel:new(o)
                 local startIndex = endIndex+1
                 local nextLen
                 local simdataList = {}
-                for i=1,simcount do
+                for i=1,count do
                     -- open new simData object table
                     local simdata = self.HardwareConfigurationResponseData.simDataTable
                     -- get length of next field
@@ -607,6 +593,29 @@ function RequestModel:new(o)
                     simdataList[i] = simdata
                 end
                 return simdataList
+            end,
+            getHardwareConfigResponseData = function(msg)
+                local mask = self.HardwareConfigurationResponseData.mask
+                local status
+                 -- HWConfigDump
+                -- fetch HWConfigDump & clean it of sysex control bytes
+                -- msg,status = RequestModel.cleanSysexUniversalMessage(RequestsTable:new().HardwareConfigurationResponse)
+                msg,status = RequestModel.cleanSysexUniversalMessage(msg)
+                print(string.format("current msg:[%s] status:[%s]",msg, status))
+
+                mask = self.HardwareConfigurationResponse[0][1]
+                self.HardwareConfigurationResponseData.userPresetCount = self.fetchDataUsingMask(msg, mask,
+                    self.HardwareConfigurationResponse[3][1]
+                )
+                self.HardwareConfigurationResponseData.simCount = self.fetchDataUsingMask(msg, mask,
+                    self.HardwareConfigurationResponse[4][1]
+                )
+                self.HardwareConfigurationResponseData.simBytesPer = self.fetchDataUsingMask(msg, mask,
+                    self.HardwareConfigurationResponse[5][1]
+                )
+                self.HardwareConfigurationResponseData.simDataTableList = self.HardwareConfigurationResponseData.simDataIterator(msg,
+                        self.du.hex2IntBase16(self.HardwareConfigurationResponseData.simCount)
+                )
             end
         }
     end
@@ -1134,57 +1143,17 @@ function ResponseParseTests()
   local du = DataUtils:new()
   local reqModel = RequestModel:new()
 
-  -- Identity Response
-  -- clean msg of SysexNonRealtime control bytes
-  msg, status = reqModel.cleanSysexNonRealtimeMessage(RequestsTable:new().IdentityResponse)
-  print(string.format("current msg:[%s] status:[%s]",msg, status))
-  -- extract data
-  -- fetch DeviceInquiryReponseData
-  local mask = reqModel.DeviceInquiryResponse[0][1]
-  for i=4,6 do -- iterate fields and assign to reciprocal indices in the data table
-    reqModel.DeviceInquiryResponseData[i] =  reqModel.fetchDataUsingMask(msg,
-        mask,
-        reqModel.DeviceInquiryResponse[i][1]
-    )
-  end
-  print(table.concat(reqModel.DeviceInquiryResponseData,","))
 
-
-
-
-  -- HWConfigDump
-  -- fetch HWConfigDump & clean it of sysex control bytes
-  msg,status = RequestModel.cleanSysexUniversalMessage(RequestsTable:new().HardwareConfigurationResponse)
-  print(string.format("current msg:[%s] status:[%s]",msg, status))
-
-  mask = reqModel.HardwareConfigurationResponse[0][1]
-  reqModel.HardwareConfigurationResponseData.userPresetCount = reqModel.fetchDataUsingMask(msg, mask,
-    reqModel.HardwareConfigurationResponse[3][1]
-  )
-  reqModel.HardwareConfigurationResponseData.simCount = reqModel.fetchDataUsingMask(msg, mask,
-    reqModel.HardwareConfigurationResponse[4][1]
-  )
-  reqModel.HardwareConfigurationResponseData.simBytesPer = reqModel.fetchDataUsingMask(msg, mask,
-    reqModel.HardwareConfigurationResponse[5][1]
-  )
-
-  reqModel.HardwareConfigurationResponseData.simDataTable = reqModel.HardwareConfigurationResponseData.simDataIterator(msg,
-        du.hex2IntBase16(reqModel.HardwareConfigurationResponseData.simCount)
-    )
-
-
---   for i=2,8 do
---     reqModel.HardwareConfigurationResponseData[i] = reqModel.fetchDataUsingMask(msg,
---         mask,
---         reqModel.HardwareConfigurationResponse[i][1]
---     )
---   end
-  print(table.concat(reqModel.HardwareConfigurationResponseData.simDataTableList,","))
-
+  reqModel.HardwareConfigurationResponseData.getHardwareConfigResponseData(RequestsTable:new().HardwareConfigurationResponse)
+  print(string.format("Instrument Count: [%s]",reqModel.HardwareConfigurationResponseData.simDataTableList[1].simInstrumentCount))
 
 
 end
 ResponseParseTests()
+
+
+
+
 
 
 --[[ Dump Tests
@@ -1308,7 +1277,57 @@ function request:new(o)
 end
 ]]--
 
+--[[ DeviceInquiryReponseData
+-- Identity Response
+-- clean msg of SysexNonRealtime control bytes
+msg, status = reqModel.cleanSysexNonRealtimeMessage(RequestsTable:new().IdentityResponse)
+print(string.format("current msg:[%s] status:[%s]",msg, status))
 
+-- fetch DeviceInquiryReponseData
+local mask = reqModel.DeviceInquiryResponse[0][1]
+for i=4,6 do -- iterate fields and assign to reciprocal indices in the data table
+    reqModel.DeviceInquiryResponseData[i] =  reqModel.fetchDataUsingMask(msg,
+    mask,
+    reqModel.DeviceInquiryResponse[i][1]
+)
+end
+print(table.concat(reqModel.DeviceInquiryResponseData,","))
+]]--
+
+
+--[[ HWConfigDump PoC code
+
+    -- HWConfigDump
+    -- fetch HWConfigDump & clean it of sysex control bytes
+    msg,status = RequestModel.cleanSysexUniversalMessage(RequestsTable:new().HardwareConfigurationResponse)
+    print(string.format("current msg:[%s] status:[%s]",msg, status))
+    
+    mask = reqModel.HardwareConfigurationResponse[0][1]
+    reqModel.HardwareConfigurationResponseData.userPresetCount = reqModel.fetchDataUsingMask(msg, mask,
+    reqModel.HardwareConfigurationResponse[3][1]
+)
+reqModel.HardwareConfigurationResponseData.simCount = reqModel.fetchDataUsingMask(msg, mask,
+reqModel.HardwareConfigurationResponse[4][1]
+)
+  reqModel.HardwareConfigurationResponseData.simBytesPer = reqModel.fetchDataUsingMask(msg, mask,
+  reqModel.HardwareConfigurationResponse[5][1]
+)
+reqModel.HardwareConfigurationResponseData.simDataTable = reqModel.HardwareConfigurationResponseData.simDataIterator(msg,
+du.hex2IntBase16(reqModel.HardwareConfigurationResponseData.simCount)
+    )
+
+print(table.concat(reqModel.HardwareConfigurationResponseData.simDataTableList,","))
+
+- single simData object for building simDataTable: NOT FOR STORING DATA DIRECTLY 
+fields [6,7,8]
+simSimPresetsMask = string.format("%s,%s,%s",
+    self.HardwareConfigurationResponse[6][1], --eeee
+    self.HardwareConfigurationResponse[7][1], --ffff
+    self.HardwareConfigurationResponse[8][1]  --gggg
+),
+
+
+]]--
 
 
 --[[ MESSAGES INBOUND
