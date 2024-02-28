@@ -1,101 +1,354 @@
 
 local dump = "F0180F00550A010100F7"
 
-local requestTypeEnum = {
-    SysexNonRealtime = "F07E",
-    Sysex = "F0aa0Fbbcc"
-}
-
-local request = {}
-function request:new(o)
-    o = o or {}
-    setmetatable({},self)
-    self.__index = self
-
-    self.requestType = ""
-    self.command = ""
-    self.request = ""
-    self.maskRequest = ""
-    self.response = ""
-    self.maskResponse = ""
-
-
-    return self
-end
 
 
 
----Fetches a substring from HAYSTACK, using a MASK/NEEDLE as a lookup table<br/>
----searches MASK for NEED for START, END positions<br/>
----returns substring from HAYSTACK of START, END<br/>
----<br/>
----example: <br/>
---- local requestSetParameter = {}<br/>
---- requestSetParameter[0] = "0201aaaabbbb"<br/>
---- requestSetParameter[1] = {"aaaa","paramname"}<br/>
---- requestSetParameter[2] = {"bbbb","paramvalue"}<br/>
---- request = setDataUsingMask(request,requestSetMultiModeRomId[1][1],"0A01")<br/>
---- ["0201aaaabbbb"] ==> ["02010A01bbbb"]<br/>
----@param haystack string source to fetch data
----@param mask string indexing string searched for needle to get substring first/last positions in haystack
----@param needle string search term for mask
----@return string - . return the haystack with replaced values
-function FetchDataUsingMask(haystack,mask,needle)
-    local first,last = string.find(mask,needle,1,true)
-    local result = string.sub(haystack,first,last)
-    local msg = string.format("Search dump:[%s] using mask:[%s] on needle: [%s] Found start:[%d] end:[%d] result:[%s]",haystack,mask,needle,first,last,result)
-    print(msg)
-    if (result == nil) then return ""
-    else return result
-    end
-end
-
----Replaces a needle in a haystack with passed data
----@param haystack string - string to operated string replacement on
----@param needle string - needle to search for in haystack
----@param replaceWithData string - replacees the needle value in the haystack
----@return string - . returns the haystack with replacements made
-function SetDataUsingMask(haystack,needle,replaceWithData)
-    local result = string.gsub(haystack,needle,replaceWithData,1)
-    local msg = string.format("Update dump:[%s] replacing:[%s] with data: [%s] result:[%s]",haystack,needle,replaceWithData,result)
-    print(msg)
-    if (result == "nil") then return ""
-    else return haystack -- return the data without changes
-    end
-end
-
-
---[[ Utilty Object for packing all utils in one place ]]--
-
+--[[ DataUtils Object as a Table: START ]]--
 local DataUtils = {}
 function DataUtils:new(o)
-    o = o or {}
-    setmetatable({},self)
-    self.__index = self
-    return self 
+  o = o or {}
+  setmetatable({},self)
+  self.__index = self
+
+  --- runc a function in protected mode: essentially try/catch
+  ---@param func function - function to invoke using pcall(FUNCITON,ARGS)
+  ---@return boolean, string - . true/false result + status message Success/Fail
+  self.tryCatchFunc = function(func,...)
+    local msg
+    local isSuccess = false
+    if((#... == 0) == true) then     -- NO arguments
+      if pcall(func) then
+          msg = "Success"
+          isSuccess = true
+      else
+        msg = "Fail"
+      end
+    else                   -- WITH arguments
+      if pcall(func,arg) then
+        msg = "Success"
+        isSuccess = true
+      else
+        msg = "Fail"
+      end
+    end
+    return isSuccess, msg
+  end
+
+
+--[[ output utils ]]--
+
+  --- output to console support for BOTH native Lua print() & Ctrlr console()
+  --- attempts output to console using proected function call[pcall(fname,args..)] with print(), if error, then try console()
+  --- using this func for ALL console out allows for switching based on env(Ctlr vs IDE)
+  --- Ctrlr uses console() Lua lang uses print()
+  --- Attempts print(), if error then try console()
+  ---@param value any - string to output to call
+  self.p = function (value)
+    if (pcall(print,tostring(value))) then
+    else pcall(console,tostring(value))
+    end
+  end
+
+
+--[[ string ]]--
+
+  --- converts anything to a string
+  --- @param value string
+  --- @return string 
+  self.ToString = function(value)
+    return tostring(value)
+  end
+
+  --- coverts table to delimited string
+  --- @param valueTable table table to convert to string
+  --- @param separator string separator character
+  --- @return string
+  self.TableToStringWithDelimiter = function(valueTable,separator)
+    return table.concat(valueTable,separator)
+  end
+
+  --- coverts table to delimited string using separator ","
+  --- @param valueTable table
+  --- @return string
+  self.TableToString = function(valueTable)
+    return self.TableToStringWithDelimiter(valueTable,",")
+    end
+
+
+--[[ string searching ]]--
+
+  ---search a string for string value
+  ---@param haystack any - value to search in
+  ---@param needle any - value to search for
+  ---@param startAt any - start index in the haystack
+  ---@param boolPlain any - true = use 'plain' text search, false = use 'pattern matching'
+  ---@return boolean - . return true if needle is found in haystack
+  self.isContains = function(haystack,needle,startAt,boolPlain)
+    startAt = startAt or 1
+    boolPlain = boolPlain or true
+    local found = string.find(haystack,needle,startAt,boolPlain)
+    if (found == nil) then
+        return false
+    else
+        return true
+    end
+  end
+
+  ---search a string for string value
+  ---@param haystack any - value to search in
+  ---@param needle any - value to search for
+  ---@param boolPlain any - true = use 'plain' text search, false = use 'pattern matching'
+  ---@return boolean - . return true if needle is found in haystack
+  self.isStartsWith = function(haystack,needle,boolPlain)
+    boolPlain = boolPlain or true
+    local starts = string.find(haystack,needle,1,boolPlain)
+    if (starts == nil) then
+        return false
+    else
+        if starts == 1 then
+          return true
+        else return false end
+    end
+  end
+
+
+  --[[ hex formatting ]]--
+
+  self.formatValueToHex128 = function(value,length)
+    length = length or -2
+    local hexString
+    if (value < 0) then
+      hexString = string.format("%.2x",value):sub(length)
+    else 
+      hexString = string.format("%.2x",value)
+    end
+    --local hexString = string.format("%.2x",value):sub(length)
+    local msg = string.format("Formatting to Hex: Value:[%s] HexString:[%s] ",value, hexString)
+    return hexString, msg
+  end
+
+  self.formatValueToHex256 = function(value,length)
+    length = length or -2
+    local hexString
+    if (value < 0) then
+      hexString = string.format("%.2x",value):sub(length)
+    else 
+      hexString = string.format("%.2x",value)
+    end
+    --local hexString = string.format("%.2x",value):sub(length)
+    local msg = string.format("Formatting to Hex: Value:[%s] HexString:[%s] ",value, hexString)
+    return hexString, msg
+  end
+
+  self.formatValueToHex1024 = function(value,length)
+    length = length or -8
+    local hexString
+    if (value < 0) then
+      hexString = string.format("%.4x",value):sub(length)
+    else 
+      hexString = string.format("%.4x",value)
+    end
+    --local hexString = string.format("%.2x",value):sub(length)
+    local msg = string.format("Formatting to Hex: Value:[%s] HexString:[%s] ",value, hexString)
+    return hexString, msg
+  end
+
+  self.Int2Hex128 = function(valueInt128)
+    return string.format("%2.x",valueInt128)
+  end
+
+  self.Int2Hex256 = function(valueInt256)
+    return string.format("%04x",valueInt256)
+  end
+
+
+  self.Int2Char = function(value)
+    return string.char(value)
+  end
+
+
+  --[[ Nibblize ]]--
+
+  self.nibblize14bit = function(nibbleInt)
+    local nibbleTable = {}
+    local msg = "Nibblize: value: " .. nibbleInt
+    -- negative values need [2's complement]
+    if (nibbleInt < 0) then
+        nibbleInt = nibbleInt + 16384
+    end
+    msg = msg .. "\n" .. "Nibblize: value after negative check/adjust: " .. nibbleInt
+    --- @type integer - value stored in first byte. modulus removes the msb from the value
+    local lsb = nibbleInt % 128
+    --- @type integer - value stored in second byte. divide revmoes the lsb from the value
+    local msb = math.floor(nibbleInt / 128)
+    nibbleTable.msb = msb
+    nibbleTable.lsb = lsb
+    return nibbleTable, msg
+  end
+
+  self.nibblize14bitToHexString = function(nibbleInt)
+    local nibbleTable = self.nibblize14bit(nibbleInt)
+    local hexstring = string.format("%s %s", self.formatValueToHex256(nibbleTable.lsb), self.formatValueToHex256(nibbleTable.msb) )
+    local msg = string.format("Nibblized to Hexstring: Value:[%d] MSB:[%d] LSB:[%d] HexString:[%s]",
+      nibbleInt, nibbleTable.lsb, nibbleTable.msb, hexstring)
+    return hexstring, msg
+  end
+
+  --- nibblize a value into msb and lsb
+  --- @param value integer to process
+  --- @return table return table with msb,lsb
+  self.Nibblize = function(value)
+    local nibble = {}
+    
+    -- negative values need [2's complement]
+    if (value < 0) then
+        value = value + 16384
+    end
+
+    local lsb = math.floor(value % 128)
+    local msb = math.floor(value / 128)
+    -- nibble.lsb = lsb
+    -- nibble.msb = msb
+    nibble[1] = lsb
+    nibble[2] = msb
+    return nibble
+
+  end
+
+  --- convert a nibble(lsb/msb) to integer value
+  --- @param lsb integer 
+  --- @param msb integer 
+  --- @return integer value
+  self.DeNibblizeLSBMSB = function(lsb,msb)
+    local value
+    local rawValue = (msb * 128) + lsb
+
+    -- if number is greate than 8192, its a negative value
+    if (rawValue >= 8192 ) then
+        value = 8192-16257
+    else
+        value = rawValue
+    end
+    
+    return value
+  end
+
+  --- convert a nibble(msb/lsb) to integer value
+  --- @param nibble table
+  --- @return integer value
+  self.DeNibblizeTable = function(nibble)
+    if ( #nibble == 2 ) then
+        return self.DeNibblizeLSBMSB(nibble[1], nibble[2])
+    else
+        return 0
+    end
+  end
+
+
+  --[[ bin/dec ]]--
+
+  ---convert a binary represented as string to decimal using specified base
+  --- base would normally be '2' for binary string
+  ---@param binaryString string binary number represented as a string
+  ---@param base integer base used for conversion
+  ---@return integer .return converted decimal number
+  self.bin2decString = function(binaryString, base)
+    return tonumber(binaryString, base)
+  end
+
+  ---convert a binary represented as string to decimal using base 2
+  ---@param binNum string binary number represented as a string
+  ---@return integer .return converted decimal number
+  self.bin2decInt = function(binNum)
+    return bin2dec(binNum, 2)
+  end
+
+
+  --[[ bool/string ]]--
+
+  --- convert boolean to string
+  ---@param valueBoolean boolean boolean to parse
+  ---@return string . returns 0 if false, 1 if true
+  self.boolToStr = function(valueBoolean)
+    if valueBoolean == true then
+      return "1"
+    else
+      return "0"
+    end
+  end
+
+  ---convert string to boolean
+  ---@param valueString string string to parse
+  ---@return boolean . returns true if 1/"true", false if 0/"false"
+  self.strToBool = function(valueString)
+    if valueString == "1" or valueString == "true" then
+      return true
+    else
+      return false
+    end
+  end
+
+  self.dec2bin = function(decNum)
+    local t = {}
+    local i
+      for i = 7, 0, -1 do
+        t[#t + 1] = math.floor(decNum / 2^i)
+        decNum = decNum % 2^i
+      end
+    return table.concat(t)
+  end
+
+
+  return self
 end
-local dataUtils = DataUtils:new()
+--[[ DataUtils Object as a Table: END ]]--
 
 
-
-
---[[ RequestModel holding ALL requests & builder/util functions ]]--
-
+--[[ PoC model for creating a request tables that can be used to creat messages or parse responses ]]--
+--[[ RequestModel holding ALL requests & builder/util functions: START ]]--
 local RequestModel = {}
-
 function RequestModel:new(o)
     o = o or {}
     setmetatable({},self)
     self.__index = self
 
-    --[[ request/response tables]]
-    do
-        self.ParameterEditRequestCommands = {}
-        self.ParameterEditRequestCommands[0] = {"0102aaaabbbb","Mask"}
-        self.ParameterEditRequestCommands[1] = {"01","Command"}
-        self.ParameterEditRequestCommands[2] = {"02","SubCommand"}
-        self.ParameterEditRequestCommands[3] = {"aaaa","ParamId"}
-        self.ParameterEditRequestCommands[4] = {"bbbb","ParamValue"}
+    -- values for midi message type
+    self.requestTypeEnum = {
+        SysexNonRealtime = "F07E",
+        Sysex = "F0aa0Fbbcc",
+        CC = "b0 00 aa",
+        CC_0 = "b0 00 00",
+        CC_32 = "b0 20 00",
+        Bank = "c0 20 aa",
+        Bank_0 = "c0 20 00",
+        Bank_1 = "c0 20 01"
+    }
+
+    do -- handshaking
+        self.ACK = {}
+        self.ACK[0] = {"7F","Mask"}
+        self.ACK[1] = {"7F","Command"}
+        self.ACKClosedLoopwithPacketCounter = {}
+        self.ACKClosedLoopwithPacketCounter[0] = {"7Faaaa","Mask"}
+        self.ACKClosedLoopwithPacketCounter[1] = {"7F","Command"}
+        self.ACKClosedLoopwithPacketCounter[2] = {"aaaa",""}
+        self.NAK = {}
+        self.NAK[0] = {"7Eaaaa","Mask"}
+        self.NAK[1] = {"7E","Command"}
+        self.NAK[2] = {"aaaa",""}
+        self.CANCEL = {}
+        self.CANCEL[0] = {"7D","Mask"}
+        self.CANCEL[1] = {"7D","Command"}
+        self.WAIT = {}
+        self.WAIT[0] = {"7C","Mask"}
+        self.WAIT[1] = {"7C","Command"}
+        self.EOF = {}
+        self.EOF[0] = {"7B","Mask"}
+        self.EOF[1] = {"7B","Command"}
+    end
+
+    do -- sysex non-realtime
         self.MasterVolume = {}
         self.MasterVolume[0] = {"7Eid0401aaaa","Mask"}
         self.MasterVolume[1] = {"04","Command"}
@@ -114,16 +367,47 @@ function RequestModel:new(o)
         self.DeviceInquiryResponse[5] = {"bbbb","Device Family Member Code"}
         self.DeviceInquiryResponse[6] = {"cccccccc","Software Revision Level (4 ASCII char)"}
         self.ParameterEditRequest = {}
+    end
+
+    do -- Program Change
+        self.ProgramChangePresetMapDumpResponse = {}
+        self.ProgramChangePresetMapDumpResponse[0] = {"16aa[256]bb[256]","Mask"}
+        self.ProgramChangePresetMapDumpResponse[1] = {"16","Command"}
+        self.ProgramChangePresetMapDumpResponse[2] = {"aa",""}
+        self.ProgramChangePresetMapDumpResponse[3] = {"[256]","<256 Data Bytes Preset Numbers>"}
+        self.ProgramChangePresetMapDumpResponse[4] = {"bb",""}
+        self.ProgramChangePresetMapDumpResponse[5] = {"[256]","<256 Data Bytes Preset ROM ID Numbers>"}
+        self.ProgramChangePresetMapDumpRequest = {}
+        self.ProgramChangePresetMapDumpRequest[0] = {"17","Mask"}
+        self.ProgramChangePresetMapDumpRequest[1] = {"17","Command"}
+    end
+
+    do -- parameter request/response 
         self.ParameterEditRequest[0] = {"0102aaaabbbb","Mask"}
         self.ParameterEditRequest[1] = {"01","Command"}
         self.ParameterEditRequest[2] = {"02","SubCommand"}
         self.ParameterEditRequest[3] = {"aaaa","Parameter ID (LSB first)"}
         self.ParameterEditRequest[4] = {"bbbb","Parameter Data"}
+        --[[
+            -- self.ParameterEditRequestCommands = {}
+            -- self.ParameterEditRequestCommands[0] = {"0102aaaabbbb","Mask"}
+            -- self.ParameterEditRequestCommands[1] = {"01","Command"}
+            -- self.ParameterEditRequestCommands[2] = {"02","SubCommand"}
+            -- self.ParameterEditRequestCommands[3] = {"aaaa","ParamId"}
+            -- self.ParameterEditRequestCommands[4] = {"bbbb","ParamValue"}
+        ]]--
+
         self.ParameterValueRequest = {}
         self.ParameterValueRequest[0] = {"0201aaaa","Mask"}
         self.ParameterValueRequest[1] = {"02","Command"}
         self.ParameterValueRequest[2] = {"01","SubCommand"}
         self.ParameterValueRequest[3] = {"aaaa","Parameter ID (LSB first)"}
+
+        self.ParamMinMaxDefaultValueRequest = {}
+        self.ParamMinMaxDefaultValueRequest[0] = {"04aaaa","Mask"}
+        self.ParamMinMaxDefaultValueRequest[1] = {"04","Command"}
+        self.ParamMinMaxDefaultValueRequest[2] = {"aaaa","Parameter ID"}
+
         self.ParamMinMaxDefaultValueResponse = {}
         self.ParamMinMaxDefaultValueResponse[0] = {"03aaaabbbbccccddddee","Mask"}
         self.ParamMinMaxDefaultValueResponse[1] = {"03","Command"}
@@ -132,10 +416,10 @@ function RequestModel:new(o)
         self.ParamMinMaxDefaultValueResponse[4] = {"cccc","Parameter maximum value"}
         self.ParamMinMaxDefaultValueResponse[5] = {"dddd","Parameter default value"}
         self.ParamMinMaxDefaultValueResponse[6] = {"ee","Read Only (0 = Read/Write, 1 = Read Only, values above 1 reserved)"}
-        self.ParamMinMaxDefaultValueRequest = {}
-        self.ParamMinMaxDefaultValueRequest[0] = {"04aaaa","Mask"}
-        self.ParamMinMaxDefaultValueRequest[1] = {"04","Command"}
-        self.ParamMinMaxDefaultValueRequest[2] = {"aaaa","Parameter ID"}
+
+    end
+
+    do -- Hardware Configuration
         self.HardwareConfigurationResponse = {}
         self.HardwareConfigurationResponse[0] = {"09aabbbbccdd[eeeeffffgggg]","Mask"}
         self.HardwareConfigurationResponse[1] = {"09","Command"}
@@ -149,6 +433,56 @@ function RequestModel:new(o)
         self.HardwareConfigurationRequest = {}
         self.HardwareConfigurationRequest[0] = {"0A","Mask"}
         self.HardwareConfigurationRequest[1] = {"0A","Command"}
+    end
+
+    do -- Setup Dump
+        self.SetupDumpResponse = {}
+        self.SetupDumpResponse[0] = {"1Caaaabbbbccccddddeeeeffffgggg[736]F7[1622443240657","Mask"}
+        self.SetupDumpResponse[1] = {"1C","Command"}
+        self.SetupDumpResponse[2] = {"aaaa","Number of Master General Parameters (11)"}
+        self.SetupDumpResponse[3] = {"bbbb","Number of Master MIDI Parameters (22)"}
+        self.SetupDumpResponse[4] = {"cccc","Number of Master Effects Parameters (16)"}
+        self.SetupDumpResponse[5] = {"dddd","Number of Reserved Parameters (0)"}
+        self.SetupDumpResponse[6] = {"eeee","Number of Non Channel Parameters (LSB first)"}
+        self.SetupDumpResponse[7] = {"ffff","Number of MIDI Channels (LSB first)"}
+        self.SetupDumpResponse[8] = {"gggg","Number of Parameters per Channel (LSB first)"}
+        self.SetupDumpResponse[9] = {"[736]",""}
+        self.SetupDumpResponse[10] = {"[16]","16 ASCII character Setup Name"}
+        self.SetupDumpResponse[11] = {"[22]","Master General"}
+        self.SetupDumpResponse[12] = {"[44]","Master MIDI"}
+        self.SetupDumpResponse[13] = {"[32]","Master Effects"}
+        self.SetupDumpResponse[14] = {"[40]","Reserved"}
+        self.SetupDumpResponse[15] = {"[6]","Non Channel Parameter Values"}
+        self.SetupDumpResponse[16] = {"[576]","Channel Parameters"}
+        self.SetupDumpRequest = {}
+        self.SetupDumpRequest[0] = {"1D","Mask"}
+        self.SetupDumpRequest[1] = {"1D","Command"}
+        -- Generic Dump
+        self.GenericDumpRequest = {}
+        self.GenericDumpRequest[0] = {"61000100aaaabbbb","Mask"}
+        self.GenericDumpRequest[1] = {"6100","command::genericdump"}
+        self.GenericDumpRequest[2] = {"0100","objecttype01=masterdata"}
+        self.GenericDumpRequest[3] = {"aaaa","objectnumber(zeroformastersetupdata)"}
+        self.GenericDumpRequest[4] = {"bbbb","romnumber(zeroformastersetupdata)"}
+        self.GenericDump = {}
+        self.GenericDump[0] = {"61aabbccddddeeeeffff[gggghhhhiiiijjjjkkkk]","Mask"}
+        self.GenericDump[1] = {"61","Command"}
+        self.GenericDump[2] = {"aa","subcommand::dumpversion"}
+        self.GenericDump[3] = {"bb","objecttype01=masterdata,otherstofollow"}
+        self.GenericDump[4] = {"cc","subtype00=mastersetup,otherstofollow"}
+        self.GenericDump[5] = {"dddd","objectnumberifapplicableelsezero"}
+        self.GenericDump[6] = {"eeee","romnumberifapplicableelsezero"}
+        self.GenericDump[7] = {"ffff","numberofparamgroups"}
+        self.GenericDump[8] = {"[",""}
+        self.GenericDump[9] = {"gggg","startingparameteridforthegroup"}
+        self.GenericDump[10] = {"hhhh","numberofparamtersinthegroup.Eachparameteridisinsequencefromthestartingidofthegroup"}
+        self.GenericDump[11] = {"iiii","startingindexofparameterelements"}
+        self.GenericDump[12] = {"jjjj","countofparameterelements"}
+        self.GenericDump[13] = {"kkkk","twobytedataforeachparameterinthegroupelementrepeatedgn,gntimes"}
+        self.GenericDump[14] = {"]",""}
+    end
+
+    do -- Generic Dump
         self.GenericName = {}
         self.GenericName[0] = {"0BaabbbbccccAAAAAAAAAAAAAAAA","Mask"}
         self.GenericName[1] = {"0B","Command"}
@@ -162,6 +496,9 @@ function RequestModel:new(o)
         self.GenericNameRequest[2] = {"aa","Object Type"}
         self.GenericNameRequest[3] = {"bbbb","Object Number"}
         self.GenericNameRequest[4] = {"cccc","Object Rom ID"}
+    end
+
+    do -- Preset Dump ClosedLoop
         self.PresetDumpHeaderClosedLoopResponse = {}
         self.PresetDumpHeaderClosedLoopResponse[0] = {"1001aaaabbbbbbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmm","Mask"}
         self.PresetDumpHeaderClosedLoopResponse[1] = {"10","Command"}
@@ -186,6 +523,9 @@ function RequestModel:new(o)
         self.PresetDumpDataClosedLoopResponse[3] = {"aaaa","Running Packet count, LSB first, begins at 1"}
         self.PresetDumpDataClosedLoopResponse[4] = {"[244]","<up to 244 Data Bytes>"}
         self.PresetDumpDataClosedLoopResponse[5] = {"bb","1 Byte = 1’s complement of the sum of {<244 Data Bytes>"}
+    end
+
+    do -- Preset Dump Open Loop
         self.PresetDumpHeaderOpenLoopResponse = {}
         self.PresetDumpHeaderOpenLoopResponse[0] = {"1003aaaabbbbbbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmm","Mask"}
         self.PresetDumpHeaderOpenLoopResponse[1] = {"10","Command"}
@@ -209,6 +549,9 @@ function RequestModel:new(o)
         self.PresetDumpDataOpenLoopResponse[2] = {"04","SubCommand"}
         self.PresetDumpDataOpenLoopResponse[3] = {"[244]",""}
         self.PresetDumpDataOpenLoopResponse[4] = {"ck","Checksum"}
+    end
+
+    do -- Preset Common
         self.PresetCommonParamsDumpDataResponse = {}
         self.PresetCommonParamsDumpDataResponse[0] = {"1010[240]","Mask"}
         self.PresetCommonParamsDumpDataResponse[1] = {"10","Command"}
@@ -235,6 +578,9 @@ function RequestModel:new(o)
         self.PresetCommonLinkParamsDumpDataResponse[2] = {"14","SubCommand"}
         self.PresetCommonLinkParamsDumpDataResponse[3] = {"[46]",""}
         self.PresetLayerParamsDumpDataResponse = {}
+    end 
+
+    do -- Preset Layer
         self.PresetLayerParamsDumpDataResponse[0] = {"1020[332]","Mask"}
         self.PresetLayerParamsDumpDataResponse[1] = {"10","Command"}
         self.PresetLayerParamsDumpDataResponse[2] = {"20","SubCommand"}
@@ -264,6 +610,9 @@ function RequestModel:new(o)
         self.PresetLayerPatchcordParamsDumpDataResponse[1] = {"10","Command"}
         self.PresetLayerPatchcordParamsDumpDataResponse[2] = {"25","SubCommand"}
         self.PresetLayerPatchcordParamsDumpDataResponse[3] = {"[152]",""}
+    end
+
+    do -- Preset Dump Request
         self.PresetDumpRequestClosedLoop = {}
         self.PresetDumpRequestClosedLoop[0] = {"1102aaaabbbb","Mask"}
         self.PresetDumpRequestClosedLoop[1] = {"11","Command"}
@@ -348,16 +697,9 @@ function RequestModel:new(o)
         self.PresetLayerCordParamsDumpRequest[3] = {"aaaa","Preset Number"}
         self.PresetLayerCordParamsDumpRequest[4] = {"bbbb","Layer Number"}
         self.PresetLayerCordParamsDumpRequest[5] = {"cccc","Preset ROM ID"}
-        self.ProgramChangePresetMapDumpResponse = {}
-        self.ProgramChangePresetMapDumpResponse[0] = {"16aa[256]bb[256]","Mask"}
-        self.ProgramChangePresetMapDumpResponse[1] = {"16","Command"}
-        self.ProgramChangePresetMapDumpResponse[2] = {"aa",""}
-        self.ProgramChangePresetMapDumpResponse[3] = {"[256]","<256 Data Bytes Preset Numbers>"}
-        self.ProgramChangePresetMapDumpResponse[4] = {"bb",""}
-        self.ProgramChangePresetMapDumpResponse[5] = {"[256]","<256 Data Bytes Preset ROM ID Numbers>"}
-        self.ProgramChangePresetMapDumpRequest = {}
-        self.ProgramChangePresetMapDumpRequest[0] = {"17","Mask"}
-        self.ProgramChangePresetMapDumpRequest[1] = {"17","Command"}
+    end
+
+    do -- arpeggiator
         self.ArpeggiatorPatternDumpResponse = {}
         self.ArpeggiatorPatternDumpResponse[0] = {"18aaaabbbbccccddddAAAAAAAAAAAA[256]","Mask"}
         self.ArpeggiatorPatternDumpResponse[1] = {"18","Command"}
@@ -373,6 +715,9 @@ function RequestModel:new(o)
         self.ArpeggiatorPatternDumpRequest[2] = {"aaaa","Arpeggiator Pattern Number (LSB first)"}
         self.ArpeggiatorPatternDumpRequest[3] = {"bbbb","Arpeggiator Pattern ROM ID"}
         self.LCDScreenDumpResponseP2KAudity2K = {}
+    end
+
+    do -- LCD 
         self.LCDScreenDumpResponseP2KAudity2K[0] = {"1A01aabbccMAP[48]","Mask"}
         self.LCDScreenDumpResponseP2KAudity2K[1] = {"1A","Command"}
         self.LCDScreenDumpResponseP2KAudity2K[2] = {"01","SubCommand"}
@@ -395,69 +740,9 @@ function RequestModel:new(o)
         self.LCDScreenCharacterPalletRequest[0] = {"1B02","Mask"}
         self.LCDScreenCharacterPalletRequest[1] = {"1B","Command"}
         self.LCDScreenCharacterPalletRequest[2] = {"02","SubCommand"}
-        self.SetupDumpResponse = {}
-        self.SetupDumpResponse[0] = {"1Caaaabbbbccccddddeeeeffffgggg[736]F7[1622443240657","Mask"}
-        self.SetupDumpResponse[1] = {"1C","Command"}
-        self.SetupDumpResponse[2] = {"aaaa","Number of Master General Parameters (11)"}
-        self.SetupDumpResponse[3] = {"bbbb","Number of Master MIDI Parameters (22)"}
-        self.SetupDumpResponse[4] = {"cccc","Number of Master Effects Parameters (16)"}
-        self.SetupDumpResponse[5] = {"dddd","Number of Reserved Parameters (0)"}
-        self.SetupDumpResponse[6] = {"eeee","Number of Non Channel Parameters (LSB first)"}
-        self.SetupDumpResponse[7] = {"ffff","Number of MIDI Channels (LSB first)"}
-        self.SetupDumpResponse[8] = {"gggg","Number of Parameters per Channel (LSB first)"}
-        self.SetupDumpResponse[9] = {"[736]",""}
-        self.SetupDumpResponse[10] = {"[16]","16 ASCII character Setup Name"}
-        self.SetupDumpResponse[11] = {"[22]","Master General"}
-        self.SetupDumpResponse[12] = {"[44]","Master MIDI"}
-        self.SetupDumpResponse[13] = {"[32]","Master Effects"}
-        self.SetupDumpResponse[14] = {"[40]","Reserved"}
-        self.SetupDumpResponse[15] = {"[6]","Non Channel Parameter Values"}
-        self.SetupDumpResponse[16] = {"[576]","Channel Parameters"}
-        self.SetupDumpRequest = {}
-        self.SetupDumpRequest[0] = {"1D","Mask"}
-        self.SetupDumpRequest[1] = {"1D","Command"}
-        self.GenericDumpRequest = {}
-        self.GenericDumpRequest[0] = {"61000100aaaabbbb","Mask"}
-        self.GenericDumpRequest[1] = {"6100","command::genericdump"}
-        self.GenericDumpRequest[2] = {"0100","objecttype01=masterdata"}
-        self.GenericDumpRequest[3] = {"aaaa","objectnumber(zeroformastersetupdata)"}
-        self.GenericDumpRequest[4] = {"bbbb","romnumber(zeroformastersetupdata)"}
-        self.GenericDump = {}
-        self.GenericDump[0] = {"61aabbccddddeeeeffff[gggghhhhiiiijjjjkkkk]","Mask"}
-        self.GenericDump[1] = {"61","Command"}
-        self.GenericDump[2] = {"aa","subcommand::dumpversion"}
-        self.GenericDump[3] = {"bb","objecttype01=masterdata,otherstofollow"}
-        self.GenericDump[4] = {"cc","subtype00=mastersetup,otherstofollow"}
-        self.GenericDump[5] = {"dddd","objectnumberifapplicableelsezero"}
-        self.GenericDump[6] = {"eeee","romnumberifapplicableelsezero"}
-        self.GenericDump[7] = {"ffff","numberofparamgroups"}
-        self.GenericDump[8] = {"[",""}
-        self.GenericDump[9] = {"gggg","startingparameteridforthegroup"}
-        self.GenericDump[10] = {"hhhh","numberofparamtersinthegroup.Eachparameteridisinsequencefromthestartingidofthegroup"}
-        self.GenericDump[11] = {"iiii","startingindexofparameterelements"}
-        self.GenericDump[12] = {"jjjj","countofparameterelements"}
-        self.GenericDump[13] = {"kkkk","twobytedataforeachparameterinthegroupelementrepeatedgn,gntimes"}
-        self.GenericDump[14] = {"]",""}
-        self.ACK = {}
-        self.ACK[0] = {"7F","Mask"}
-        self.ACK[1] = {"7F","Command"}
-        self.ACKClosedLoopwithPacketCounter = {}
-        self.ACKClosedLoopwithPacketCounter[0] = {"7Faaaa","Mask"}
-        self.ACKClosedLoopwithPacketCounter[1] = {"7F","Command"}
-        self.ACKClosedLoopwithPacketCounter[2] = {"aaaa",""}
-        self.NAK = {}
-        self.NAK[0] = {"7Eaaaa","Mask"}
-        self.NAK[1] = {"7E","Command"}
-        self.NAK[2] = {"aaaa",""}
-        self.CANCEL = {}
-        self.CANCEL[0] = {"7D","Mask"}
-        self.CANCEL[1] = {"7D","Command"}
-        self.WAIT = {}
-        self.WAIT[0] = {"7C","Mask"}
-        self.WAIT[1] = {"7C","Command"}
-        self.EOF = {}
-        self.EOF[0] = {"7B","Mask"}
-        self.EOF[1] = {"7B","Command"}
+    end
+
+    do -- copy/paste objects
         self.CopyPresetRequest = {}
         self.CopyPresetRequest[0] = {"20aaaabbbbcccc","Mask"}
         self.CopyPresetRequest[1] = {"20","Command"}
@@ -492,23 +777,21 @@ function RequestModel:new(o)
         self.CopyPatternRequest[0] = {"2Daaaabbbbcccc","Mask"}
         self.CopySongRequest = {}
         self.CopySongRequest[0] = {"2Eaaaabbbbcccc","Mask"}
-
     end
 
 
     --[[ utility methods ]]--
 
     --- Fetches a substring from HAYSTACK, using a MASK/NEEDLE as a lookup table<br/>
-    --- searches MASK for NEED for START, END positions<br/>
-    --- returns substring from HAYSTACK of START, END<br/>
-    --- <br/>
-    --- example: <br/>
-    --- local requestSetParameter = {}<br/>
-    --- requestSetParameter[0] = "0201aaaabbbb"<br/>
-    --- requestSetParameter[1] = {"aaaa","paramname"}<br/>
-    --- requestSetParameter[2] = {"bbbb","paramvalue"}<br/>
-    --- request = setDataUsingMask(request,requestSetMultiModeRomId[1][1],"0A01")<br/>
-    --- ["0201aaaabbbb"] ==> ["02010A01bbbb"]<br/>
+     --searches MASK for NEED for START, END positions<br/>
+     --returns substring from HAYSTACK of START, END<br/>
+     --example: <br/>
+     --local requestSetParameter = {}<br/>
+     --requestSetParameter[0] = "0201aaaabbbb"<br/>
+     --requestSetParameter[1] = {"aaaa","paramname"}<br/>
+     --requestSetParameter[2] = {"bbbb","paramvalue"}<br/>
+     --request = setDataUsingMask(request,requestSetMultiModeRomId[1][1],"0A01")<br/>
+     --["0201aaaabbbb"] ==> ["02010A01bbbb"]<br/>
     --- @param haystack string source to fetch data
     --- @param mask string indexing string searched for needle to get substring first/last positions in haystack
     --- @param needle string search term for mask
@@ -568,13 +851,37 @@ function RequestModel:new(o)
 
     return self
 end
+--[[ RequestModel holding ALL requests & builder/util functions: END ]]--
 
 
 
 
---[[ tests ]]--
+--[[ Dump Tests
+
+DeviceInquiry
+DeviceInquiryResponse
+
+HardwareConfigurationRequest
+HardwareConfigurationResponse
+
+PresetDumpHeaderClosedLoopRequest
+PresetDumpHeaderClosedLoopResponse
+
+PresetDumpHeaderClosedLoopResponse
+
+self.ACKClosedLoopwithPacketCounter = {}
+
+self.SetupDumpResponse = {}
+
+
+
+
+]]--
+
+--[[ tests 
+
 function RequestModelTests()
-    --[[ RequestModel Tests ]]--
+    --RequestModel Tests
     local reqModel = RequestModel:new()
     -- test table access
     print(reqModel.ParameterEditRequestCommands[0][1])
@@ -593,9 +900,252 @@ function RequestModelTests()
     local msg = reqModel.buildPaParameterEditRequest("0A01","0109")
     print(msg)
 end
-
 RequestModelTests()
---[[ PoC model for creating a request tables that can be used to creat messages or parse responses ]]--
+
+]]--
+
+--[[ unused functions
+
+---Fetches a substring from HAYSTACK, using a MASK/NEEDLE as a lookup table<br/>
+---searches MASK for NEED for START, END positions<br/>
+---returns substring from HAYSTACK of START, END<br/>
+---<br/>
+---example: <br/>
+--- local requestSetParameter = {}<br/>
+--- requestSetParameter[0] = "0201aaaabbbb"<br/>
+--- requestSetParameter[1] = {"aaaa","paramname"}<br/>
+--- requestSetParameter[2] = {"bbbb","paramvalue"}<br/>
+--- request = setDataUsingMask(request,requestSetMultiModeRomId[1][1],"0A01")<br/>
+--- ["0201aaaabbbb"] ==> ["02010A01bbbb"]<br/>
+---@param haystack string source to fetch data
+---@param mask string indexing string searched for needle to get substring first/last positions in haystack
+---@param needle string search term for mask
+---@return string - . return the haystack with replaced values
+function FetchDataUsingMask(haystack,mask,needle)
+    local first,last = string.find(mask,needle,1,true)
+    local result = string.sub(haystack,first,last)
+    local msg = string.format("Search dump:[%s] using mask:[%s] on needle: [%s] Found start:[%d] end:[%d] result:[%s]",haystack,mask,needle,first,last,result)
+    print(msg)
+    if (result == nil) then return ""
+    else return result
+    end
+end
+
+---Replaces a needle in a haystack with passed data
+---@param haystack string - string to operated string replacement on
+---@param needle string - needle to search for in haystack
+---@param replaceWithData string - replacees the needle value in the haystack
+---@return string - . returns the haystack with replacements made
+function SetDataUsingMask(haystack,needle,replaceWithData)
+    local result = string.gsub(haystack,needle,replaceWithData,1)
+    local msg = string.format("Update dump:[%s] replacing:[%s] with data: [%s] result:[%s]",haystack,needle,replaceWithData,result)
+    print(msg)
+    if (result == "nil") then return ""
+    else return haystack -- return the data without changes
+    end
+end
+
+]]--
+
+--[[ Utilty Object for packing all utils in one place 
+local DataUtils = {}
+function DataUtils:new(o)
+    o = o or {}
+    setmetatable({},self)
+    self.__index = self
+    return self 
+end
+local dataUtils = DataUtils:new()
+]]--
+
+--[[
+local request = {}
+function request:new(o)
+    o = o or {}
+    setmetatable({},self)
+    self.__index = self
+
+    self.requestType = ""
+    self.command = ""
+    self.request = ""
+    self.maskRequest = ""
+    self.response = ""
+    self.maskResponse = ""
+
+
+    return self
+end
+]]--
 
 
 
+
+--[[ MESSAGES INBOUND
+
+
+==========================
+-- preset dump
+==========================
+    | msg# | Sysex |
+| - | - |
+ 1 | F0180F0055100103015E0B0000380013001000140004001F0003000A002A0048000000F7 |
+ 2 | F0180F00551002010073796E3A4E6F726469636120202020205F00320000000000000059007F00000000001E005A0000002D0003000E0000002A00620064002B006300640000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000070052010500000001000000010000000000000000000000000000007F0000000E0000000E003000400020001600000000000200000006000000280000000000000000007F7F000000000000000000007F0000007F007F7F000000000000000000007F0000007F000E000E002C00000078F7 |
+ 3 | F0180F00551002020000000000000000006C000000000000007F000000000000007F0000000000000000004F0000000000000004000800010000000000000000000E000200000000004A0000000000000000006A7F0100000000000100010000006400400062002A000000000064000000230000000000010000003200000028003D0000000100640015000A0000000000010000000000000063001400000000006400000064000000000000000000000014003800640015003900500050003800640020005100447F21005200447F22004900447F23004A00447F24004C00410025004B00307F0C00400000002800310150000C003800000029002BF7 |
+ 4 | F0180F005510020300330164006800380000002A00350164002B0068000C006000300000002C00380106002D00300026002D002F0006001600080064001301380000002A003D013C00120038002600000007007B7F00000000000067000600000000007F000000000000007F00000000007C7F0000000000000000000000000800010000000000000000000E00000037000E004B0000000000000000000F000000000000000100010000003F0059004F0010000000000064006E00000000000000010000006400100050003100000000006400460000000000000001000000000000006300140000000000640000006400000000000000000000005AF7 |
+ 5 | F0180F0055100204000C004000180010003000060060003000000011002A0106001600080064005000380064000C003800570009003800410014003800280015003900320020002D012700240038012100280051005A7F290052001700220049005D7F23004B00587F680038000000640041000000240039013800210030002400250068000C0012000000000009004000737F0900410026000000287F00000000000046006C000000000000007F000000000000007F00000000000000060000000C000000000007000000010000000000040000000E0001000800080047000000000000000000000000000000000000000100050043000000630074F7 |
+ 6 | F0180F00551002050028000000590064007D005F0000000000010021005100460063003E0000004A006400770056000000000001000000000000006300250000000000640000006400000000000000000000000C004000090010003000060060003000000011002A0106000C0038002A00500038002C00090038003E0016000800410012002A01030014002D010F0068004100190068002F0009000A00490005000A005100070014002E01577F200040004500090051001200120038000A00210030002400250068000C0000000000000000000000000000000000000000000000000000007B7F000000000000000060000500000000007F00000014F7 |
+ 7 | F0180F005510020600000000007F000000000000000E0000000C000000000000000000010000000000000000000E0001000D001B004700000000000000000008000000000000000000010001002B00000063004A000000670064007D005F0000000000010010003600460063004D0000004200640077002F000000000001000000000000006300250000000000640000006400000000000000000000000C004000110010003000060060003000000011002A0106000C0038002A00500038001E00090038003E0016000800410012002A01030014002D011B0068004100677F68002F00777F270030005B7F27002F00787F14002E01597F240039016DF7 |
+ 8 | F0180F0055100207001C7F630038000000680038010000210030002400250068000C000000000000000000000000000000000000000000000000001AF7 |
+ 9 | F0180F00557BF7 |
+
+==========================
+## USERBANK-000
+==========================
+O.179::F0180F0055110200000000F7
+O.180::F0180F00557F0000F7
+I.140::F0180F0055100100005E0B0000380013001000140004001F0003000A002A0048000000F7
+O.181::F0180F00557F0100F7
+I.141::F0180F0055100201006B69743A4B2D302020202020202020207F00000000003D0000004F0000003C0000001E00000000003C003C000E0000002E00620064002F00630064000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007F000000070001020A00000001000000010000000000000000000000000000007F0000000E00000001002800600000000A000000000001000000030000000A0000000000000000007F7F000000000000000000007F0000007F007F7F000000000000000000007F0000007F000E000E004204000043F7
+O.182::F0180F00557F0200F7
+I.142::F0180F00551002020000000000290000007F000000000000007F000000000000007F0000000000000000000000000000000C0000000000010000000000000000000E00000000000000707F0100000000000100677F010000000000010001000000640000006400140000000000640000002300000000000100000064000000640000000000000064000000000000000000010000000000000063001400000000006400000064000000000000000000000014003800640015003900500050003800640020005100447F21005200447F22004900587F23004A00307F24004C00410025004B00307F0C00400000002800310150000C003800000029005FF7
+O.183::F0180F00557F0300F7
+I.143::F0180F005510020300330150006800410000002A00350164002B0068000C006000300000002C0038014C002D00300026002D002F0006001600080064000000000000000000000000000000000000001B060600000000000000000024000000000000007F000000000000007F0000000000000000000000000001000C0000000000010000000000000000000E00000000000000707F0100000000000100677F010000000000010001000000640000006400140000000000640000002300000000000100000064000000640000000000000064000000000000000000010000000000000063001400000000006400000064000000000000000000000038F7
+O.184::F0180F00557F0400F7
+I.144::F0180F00551002040014003800640015003900500050003800640020005100447F21005200447F22004900587F23004A00307F24004C00410025004B00307F0C00400000002800310150000C00380000002900330150006800410000002A00350164002B0068000C006000300000002C0038014C002D00300026002D002F00060016000800640000000000000000000000000000000000000022040600000000002500000028000000000000007F000000000000007F0000000000000000000000000001000C0000000000010000000000000000000E00000000000000707F0100000000000100677F0100000000000100010000006400000064005DF7
+O.185::F0180F00557F0500F7
+I.145::F0180F005510020500140000000000640000002300000000000100000064000000640000000000000064000000000000000000010000000000000063001400000000006400000064000000000000000000000014003800640015003900500050003800640020005100447F21005200447F22004900587F23004A00307F24004C00410025004B00307F0C00400000002800310150000C00380000002900330150006800410000002A00350164002B0068000C006000300000002C0038014C002D00300026002D002F0006001600080064000000000000000000000000000000000000000000000000000000000000007F000000000000007F0000000CF7
+O.186::F0180F00557F0600F7
+I.146::F0180F005510020600000000007F0000000000000000000000000000000C0000000000010000000000000000000E00000000000000707F0100000000000100677F010000000000010001000000640000006400140000000000640000002300000000000100000064000000640000000000000064000000000000000000010000000000000063001400000000006400000064000000000000000000000014003800640015003900500050003800640020005100447F21005200447F22004900587F23004A00307F24004C00410025004B00307F0C00400000002800310150000C00380000002900330150006800410000002A00350164002B00680002F7
+O.187::F0180F00557F0700F7
+I.147::F0180F0055100207000C006000300000002C0038014C002D00300026002D002F0006001600080064000000000000000000000000000000000000004BF7
+I.148::F0180F00557BF7
+
+O.188::F0180F005501020A010000F7
+O.189::F0180F0055010201077F7FF7
+
+
+==========================
+-- Preset Select CC0, CC32, (?ROM/Preset?) select
+==========================
+-- xl7
+OE.1::b0000e
+OE.2::b02000
+OE.3::c02300
+OE.4::b0000e
+OE.5::b02000
+OE.6::c02400
+-- user
+OE.7::b00000
+OE.8::b02000
+OE.9::c02400
+OE.10::b00000
+OE.11::b02000
+OE.12::c04000
+
+==========================
+SESSION NOTES
+==========================
+
+F0 7E 00 - Universal System Exclusive Non-realtime header
+F0 - SOX
+7E - SysExclusive Non-realtime
+00 - DeviceID
+
+06 - General Information
+01 - Identity Request
+F7 - EOX
+
+O.2::F0 7E 00 06 01 F7
+I.1::F0 7E 00 06 02 18 04 04 0D 00 32 2E 30 30 F7
+
+
+==========================
+SESSION START SEQUENCE
+==========================
+
+
+-- identity request
+O.1::F0 7E 00 06 01 F7
+I.1::F0 7E 00 06 02 18 04 04 0D 00 32 2E 30 30 F7
+
+-- set sysex common delay
+O.3::F0 18 0F 00 55 01 02 15 03 20 01 F7
+
+--HardwareConfigurationRequest
+O.4::F0180F00550AF7
+--HardwareConfigurationResponse
+I.3::F0180F00550902000401060E0000043B09F7
+-- ACK
+O.5::F0180F00557F0000F7
+
+
+-- SetupDumpRequest
+O.6::F0180F00551DF7
+
+-- ??? ACK ???? <== for ???SetupDumpResponse??
+O.7::F07F0004015000F7
+
+-- SetupDumpResponse 
+I.4::F0180F00551C1E00230010001500030020000900557365722053657475702020202020200001010000000000020000000100010000000100000002007F7F7F7F0000000000000E0000003E007F7F0100000005000100000000000000010001000200000000004A00470019001A0049004B005500480040004100420011001000010020014E004D001B001C00010003005200530001000000000000000000000000000100000001002800600000000A0014001E000100000003000000000000000000000000000100000000000A00000001000000010000000000000000000000000000007F000000030000000000000000007F7F1F0003017F0040007F7F0000010000000100000001007F0040007F7F0000010000000100000002007F0040007F7F0000010000000100000003007F0040007F7F0000010000000100000004007F0040007F7F0000010000000100000005007F0040007F7F0000010000000100000006007F0040007F7F0000010000000100000007007F0040007F7F0000010000000100000008007F0040007F7F0000010000000100000009007F0040007F7F000001000000010000000A007F0040007F7F000001000000010000000B007F0040007F7F000001000000010000000C007F0040007F7F000001000000010000000D007F0040007F7F000001000000010000000E007F0040007F7F000001000000010000000F007F0040007F7F0000010000000100000010007F0040007F7F0000010000000100000011007F0040007F7F0000010000000100000012007F0040007F7F0000010000000100000013007F0040007F7F0000010000000100000014007F0040007F7F0000010000000100000015007F0040007F7F0000010000000100000016007F0040007F7F0000010000000100000017007F0040007F7F0000010000000100000018007F0040007F7F0000010000000100000019007F0040007F7F000001000000010000001A007F0040007F7F000001000000010000001B007F0040007F7F000001000000010000001C007F0040007F7F000001000000010000001D007F0040007F7F000001000000010000001E007F0040007F7F000001000000010000001F007F0040007F7F00000100000001000000F7
+
+
+-- MultiMode Commands
+O.8::F0180F0055010201010000F7
+O.9::F0180F005501020B010000F7
+O.10::F0180F0055110203010000F7
+-- MultiMode Commands
+
+
+-- Preset Dump Header Response
+I.5::F0180F0055100103015E0B0000380013001000140004001F0003000A002A0048000000F7
+-- Preset Dump Header Response: ACK
+O.11::F0180F00557F0000F7
+
+-- Preset Dump Response: Packet #1
+I. 6::F0180F00551002010073796E3A4E6F726469636120202020205F00320000000000000059007F00000000001E005A0000002D0003000E0000002A00620064002B006300640000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000070052010500000001000000010000000000000000000000000000007F0000000E0000000E003000400020001600000000000200000006000000280000000000000000007F7F000000000000000000007F0000007F007F7F000000000000000000007F0000007F000E000E002C00000078F7
+-- Preset Dump Response: Packet #3 ACK
+O.12::F0180F00557F0100F7
+
+-- Preset Dump Response: Packet #2
+I.7::F0180F00551002020000000000000000006C000000000000007F000000000000007F0000000000000000004F0000000000000004000800010000000000000000000E000200000000004A0000000000000000006A7F0100000000000100010000006400400062002A000000000064000000230000000000010000003200000028003D0000000100640015000A0000000000010000000000000063001400000000006400000064000000000000000000000014003800640015003900500050003800640020005100447F21005200447F22004900447F23004A00447F24004C00410025004B00307F0C00400000002800310150000C003800000029002BF7
+-- Preset Dump Response: Packet #2 ACK
+O.13::F0180F00557F0200F7
+
+-- Preset Dump Response: Packet #3
+I.8::F0180F005510020300330164006800380000002A00350164002B0068000C006000300000002C00380106002D00300026002D002F0006001600080064001301380000002A003D013C00120038002600000007007B7F00000000000067000600000000007F000000000000007F00000000007C7F0000000000000000000000000800010000000000000000000E00000037000E004B0000000000000000000F000000000000000100010000003F0059004F0010000000000064006E00000000000000010000006400100050003100000000006400460000000000000001000000000000006300140000000000640000006400000000000000000000005AF7
+-- Preset Dump Response: Packet #3 ACK
+O.14::F0180F00557F0300F7
+
+-- Preset Dump Response: Packet #4
+I.9::F0180F0055100204000C004000180010003000060060003000000011002A0106001600080064005000380064000C003800570009003800410014003800280015003900320020002D012700240038012100280051005A7F290052001700220049005D7F23004B00587F680038000000640041000000240039013800210030002400250068000C0012000000000009004000737F0900410026000000287F00000000000046006C000000000000007F000000000000007F00000000000000060000000C000000000007000000010000000000040000000E0001000800080047000000000000000000000000000000000000000100050043000000630074F7
+-- Preset Dump Response: Packet #4 ACK
+O.15::F0180F00557F0400F7
+
+-- Preset Dump Response: Packet #5
+I.10::F0180F00551002050028000000590064007D005F0000000000010021005100460063003E0000004A006400770056000000000001000000000000006300250000000000640000006400000000000000000000000C004000090010003000060060003000000011002A0106000C0038002A00500038002C00090038003E0016000800410012002A01030014002D010F0068004100190068002F0009000A00490005000A005100070014002E01577F200040004500090051001200120038000A00210030002400250068000C0000000000000000000000000000000000000000000000000000007B7F000000000000000060000500000000007F00000014F7
+-- Preset Dump Response: Packet #5 ACK
+O.16::F0180F00557F0500F7
+
+-- Preset Dump Response: Packet #6
+I.11::F0180F005510020600000000007F000000000000000E0000000C000000000000000000010000000000000000000E0001000D001B004700000000000000000008000000000000000000010001002B00000063004A000000670064007D005F0000000000010010003600460063004D0000004200640077002F000000000001000000000000006300250000000000640000006400000000000000000000000C004000110010003000060060003000000011002A0106000C0038002A00500038001E00090038003E0016000800410012002A01030014002D011B0068004100677F68002F00777F270030005B7F27002F00787F14002E01597F240039016DF7
+-- Preset Dump Response: Packet #6 ACK
+O.17::F0180F00557F0600F7
+
+-- Preset Dump Response: Packet #7
+I.12::F0180F0055100207001C7F630038000000680038010000210030002400250068000C000000000000000000000000000000000000000000000000001AF7
+-- Preset Dump Response: Packet #7 ACK
+O.18::F0180F00557F0700F7
+-- -- Preset Dump Response: EOF
+I.13::F0180F00557BF7
+
+
+-- multi-mode ROM?
+O.19::F0180F005501020A010000F7
+-- edit buffer
+O.20::F0180F0055010201077F7FF7
+
+
+==========================
+SESSION START SEQUENCE: DONE
+==========================
+]]--

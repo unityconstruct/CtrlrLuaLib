@@ -1,3 +1,5 @@
+--[[ DataUtils Object as a Table: START ]]--
+
 local DataUtils = {}
 
 function DataUtils:new(o)
@@ -297,6 +299,9 @@ end
   return self
 end
 
+--[[ DataUtils Object as a Table: END ]]--
+
+
 
 --[[ tests ]]--
 
@@ -323,16 +328,6 @@ function DataUtilsTests()
 
   --[[ console out ]]--
   du.p("test") -- attempts output to console using proected function call[pcall(fname,args..)] with print(), if error, then try console()
-
-end
-
-if ("asdf" == "asdf") then
-  if (#result ~= nil) then
-      print("1")
-  else
-    print("2")
-  end
-else
 
 end
 
