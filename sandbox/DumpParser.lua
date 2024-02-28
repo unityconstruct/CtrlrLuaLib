@@ -45,7 +45,7 @@ function FetchDataUsingMask(haystack,mask,needle)
     local result = string.sub(haystack,first,last)
     local msg = string.format("Search dump:[%s] using mask:[%s] on needle: [%s] Found start:[%d] end:[%d] result:[%s]",haystack,mask,needle,first,last,result)
     print(msg)
-    if (result == "nil") then return ""
+    if (result == nil) then return ""
     else return result
     end
 end

@@ -5,6 +5,73 @@ function DataUtils:new(o)
   setmetatable({},self)
   self.__index = self
 
+  --- runc a function in protected mode: essentially try/catch
+  ---@param func function - function to invoke using pcall(FUNCITON,ARGS)
+  ---@return boolean, string - . true/false result + status message Success/Fail
+  self.tryCatchFunc = function(func,...)
+    local msg
+    local isSuccess = false
+    if((#... == 0) == true) then     -- NO arguments
+      if pcall(func) then
+          msg = "Success"
+          isSuccess = true
+      else
+        msg = "Fail"
+      end
+    else                   -- WITH arguments
+      if pcall(func,arg) then
+        msg = "Success"
+        isSuccess = true
+      else
+        msg = "Fail"
+      end
+    end
+    return isSuccess, msg
+  end
+
+
+--[[ output utils ]]--
+
+  --- output to console support for BOTH native Lua print() & Ctrlr console()
+  --- attempts output to console using proected function call[pcall(fname,args..)] with print(), if error, then try console()
+  --- using this func for ALL console out allows for switching based on env(Ctlr vs IDE)
+  --- Ctrlr uses console() Lua lang uses print()
+  --- Attempts print(), if error then try console()
+  ---@param value any - string to output to call
+  self.p = function (value)
+    if (pcall(print,tostring(value))) then
+    else pcall(console,tostring(value))
+    end
+  end
+
+
+--[[ string ]]--
+
+  --- converts anything to a string
+  --- @param value string
+  --- @return string 
+  self.ToString = function(value)
+    return tostring(value)
+  end
+
+--- coverts table to delimited string
+--- @param valueTable table table to convert to string
+--- @param separator string separator character
+--- @return string
+self.TableToStringWithDelimiter = function(valueTable,separator)
+    return table.concat(valueTable,separator)
+  end
+
+--- coverts table to delimited string using separator ","
+--- @param valueTable table
+--- @return string
+self.TableToString = function(valueTable)
+    return self.TableToStringWithDelimiter(valueTable,",")
+end
+
+
+--[[ string searching ]]--
+
   ---search a string for string value
   ---@param haystack any - value to search in
   ---@param needle any - value to search for
@@ -38,6 +105,9 @@ function DataUtils:new(o)
         else return false end
     end
   end
+
+
+  --[[ hex formatting ]]--
 
   self.formatValueToHex128 = function(value,length)
     length = length or -2
@@ -77,6 +147,20 @@ function DataUtils:new(o)
     local msg = string.format("Formatting to Hex: Value:[%s] HexString:[%s] ",value, hexString)
     return hexString, msg
   end
+
+  self.Int2Hex128 = function(valueInt128)
+    return string.format("%2.x",valueInt128)
+  end
+
+  self.Int2Hex256 = function(valueInt256)
+    return string.format("%04x",valueInt256)
+  end
+
+
+  self.Int2Char = function(value)
+    return string.char(value)
+  end
+
 
   --[[ Nibblize ]]--
 
@@ -155,6 +239,7 @@ function DataUtils:new(o)
     end
   end
 
+
   --[[ bin/dec ]]--
 
   ---convert a binary represented as string to decimal using specified base
@@ -172,6 +257,7 @@ function DataUtils:new(o)
   self.bin2decInt = function(binNum)
     return bin2dec(binNum, 2)
   end
+
 
   --[[ bool/string ]]--
 
@@ -207,75 +293,50 @@ function DataUtils:new(o)
     return table.concat(t)
   end
 
-  --[[ string ]]--
-
-  --- converts anything to a string
-  --- @param value string
-  --- @return string 
-  self.ToString = function(value)
-      return tostring(value)
-  end
-
-  --- coverts table to delimited string
-  --- @param valueTable table table to convert to string
-  --- @param separator string separator character
-  --- @return string
-  self.TableToStringWithDelimiter = function(valueTable,separator)
-
-      return table.concat(valueTable,separator)
-  end
-
-  --- coverts table to delimited string using separator ","
-  --- @param valueTable table
-  --- @return string
-  self.TableToString = function(valueTable)
-      return self.TableToStringWithDelimiter(valueTable,",")
-  end
-
-
-  self.Int2Hex128 = function(valueInt128)
-    return string.format("%2.x",valueInt128)
-  end
-
-  self.Int2Hex256 = function(valueInt256)
-    return string.format("%04x",valueInt256)
-  end
-
-
-  self.Int2Char = function(value)
-    return string.char(value)
-  end
-
-  ---print to console
-  ---@param data any
-  self.p = function(data)
-    data = data or "error: nothing to print"
-    print(tostring(data))
-  end
 
   return self
 end
+
 
 --[[ tests ]]--
 
 function DataUtilsTests()
   local du = DataUtils:new()
   local result
+  -- various string to hex nibble funcs
+
+
   result = du.DeNibblizeTable({1,1})
   du.p(result) --129
-
   result = du.Nibblize(128)
   resultTable = table.concat(result,",")
   du.p(result) -- table: 0x558499c41950
   du.p(resultTable) -- 0,1
-  
   result = du.nibblize14bit(129)
   du.p(string.format("LSB:[%d] MSB:[%d]",result.lsb,result.msb))
   du.p(string.format("LSB:[%.2x] MSB:[%.2x]",result.lsb,result.msb))
+  
+  -- various sting to hex formatting
   du.p(du.Int2Hex128(120))
   du.p(du.Int2Hex256(120))
   du.p(du.Int2Hex256(259))
+
+  --[[ console out ]]--
+  du.p("test") -- attempts output to console using proected function call[pcall(fname,args..)] with print(), if error, then try console()
+
 end
+
+if ("asdf" == "asdf") then
+  if (#result ~= nil) then
+      print("1")
+  else
+    print("2")
+  end
+else
+
+end
+
+
 
 -- DataUtilsTests()
 
@@ -309,3 +370,25 @@ return {
   end
   ]]--
 
+  --[[
+    ---print to console using Lua print() function
+    ---@param value any - any value. tostring() will be applied first
+    self.outPrint = function(value)
+      print(tostring(value))
+    end
+    
+    ---print to console using Ctrlr console() function
+    ---@param value any - any value. tostring() will be applied first
+    self.outConsole = function(value)
+      console(tostring(value))
+    end
+  
+  
+    ---print to console
+  ---@param data any
+  self.p = function(data)
+    data = data or "error: nothing to print"
+    print(tostring(data))
+  end
+
+    ]]--
