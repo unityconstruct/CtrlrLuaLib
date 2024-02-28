@@ -2,6 +2,26 @@
 local dump = "F0180F00550A010100F7"
 
 
+local NewClass = {}
+function NewClass:new(o)
+  o = o or {}
+  setmetatable({},self)
+  self.__index = self
+  self.myProperty = "Excellent"
+  self.myTable = {
+    myRow = {1,"cell1"}
+  }
+  self.myFunction = function() 
+    return string.format("My Property is Hella %s!",self.myProperty) end
+  return self
+end
+local newClass = NewClass:new()
+print(newClass.myProperty)
+print(newClass.myFunction())
+print(NewClass:new():myFunction())
+
+
+
 local RequestsTable = {}
 function RequestsTable:new(o)
   o = o or {}
@@ -10,9 +30,10 @@ function RequestsTable:new(o)
   -- identity request
   self.IdentityRequest = "F07E000601F7"
   self.IdentityResponse = "F07E0006021804040D00322E3030F7"
+  self.HardwareConfigurationRequest = "F0180F00550AF7"
+  self.HardwareConfigurationResponse = "F0180F00550902000401060E0000043B09F7"
   return self
 end
-local newClass = RequestsTable:new()
 
 
 
@@ -149,6 +170,22 @@ function DataUtils:new(o)
   end
 
   --[[ hex formatting ]]--
+
+  ---convert single hex byte to integer ( does it handle multiple bytes?)
+  ---@param hex string - hexString value
+  ---@param base integer - base value for converting the hexString
+  ---@return integer - integer value for provided hex value
+  self.hex2int = function(hex,base)
+    base = base or 16
+    return tonumber(hex,base)
+  end
+
+  ---convert single hex byte to integer ( does it handle multiple bytes?)
+  ---@param hex string - hexString value
+  ---@return integer - integer value for provided hex value
+  self.hex2IntBase16 = function(hex)
+    return self.hex2int(hex,16)
+  end
 
   self.formatValueToHex128 = function(value,length)
     length = length or -2
@@ -348,10 +385,13 @@ function RequestModel:new(o)
     setmetatable({},self)
     self.__index = self
 
+    self.du = DataUtils:new()
+
     -- values for midi message type
     self.requestTypeEnum = {
         SysexNonRealtime = "F07E",
         Sysex = "F0aa0Fbbcc",
+        SysexProteus = "F0180F0055",
         CC = "b0 00 aa",
         CC_0 = "b0 00 00",
         CC_32 = "b0 20 00",
@@ -393,6 +433,7 @@ function RequestModel:new(o)
         self.DeviceInquiry[0] = {"7Eid0601","Mask"}
         self.DeviceInquiry[1] = {"06","Command"}
         self.DeviceInquiry[2] = {"01","SubCommand"}
+
         self.DeviceInquiryResponse = {}
         self.DeviceInquiryResponse[0] = {"7Eid060218aaaabbbbcccccccc","Mask"}
         self.DeviceInquiryResponse[1] = {"06","Command"}
@@ -401,7 +442,10 @@ function RequestModel:new(o)
         self.DeviceInquiryResponse[4] = {"aaaa","Device Family code"}
         self.DeviceInquiryResponse[5] = {"bbbb","Device Family Member Code"}
         self.DeviceInquiryResponse[6] = {"cccccccc","Software Revision Level (4 ASCII char)"}
-        self.ParameterEditRequest = {}
+        self.DeviceInquiryResponseData = {}
+
+
+        
     end
 
     do -- Program Change
@@ -418,6 +462,7 @@ function RequestModel:new(o)
     end
 
     do -- parameter request/response 
+        self.ParameterEditRequest = {}
         self.ParameterEditRequest[0] = {"0102aaaabbbb","Mask"}
         self.ParameterEditRequest[1] = {"01","Command"}
         self.ParameterEditRequest[2] = {"02","SubCommand"}
@@ -455,19 +500,115 @@ function RequestModel:new(o)
     end
 
     do -- Hardware Configuration
-        self.HardwareConfigurationResponse = {}
-        self.HardwareConfigurationResponse[0] = {"09aabbbbccdd[eeeeffffgggg]","Mask"}
-        self.HardwareConfigurationResponse[1] = {"09","Command"}
-        self.HardwareConfigurationResponse[2] = {"aa","Number of General Information Bytes"}
-        self.HardwareConfigurationResponse[3] = {"bbbb","Number of User Presets"}
-        self.HardwareConfigurationResponse[4] = {"cc","Number of Simms Installed"}
-        self.HardwareConfigurationResponse[5] = {"dd","Number of Information Bytes per Sim"}
-        self.HardwareConfigurationResponse[6] = {"eeee","Simm ID"}
-        self.HardwareConfigurationResponse[7] = {"ffff","Number of Sim Presets"}
-        self.HardwareConfigurationResponse[8] = {"gggg","Number of Sim Instruments"}
+
         self.HardwareConfigurationRequest = {}
         self.HardwareConfigurationRequest[0] = {"0A","Mask"}
         self.HardwareConfigurationRequest[1] = {"0A","Command"}
+
+        self.HardwareConfigurationResponse = {}
+        self.HardwareConfigurationResponse[0] = {"09aabbbbccddeeeeffffgggg","Mask"}
+        self.HardwareConfigurationResponse[1] = {"09","Command"}
+        -- 02 0004 01 06 0E00 0004 3B09
+        self.HardwareConfigurationResponse[2] = {"aa","Number of General Information Bytes"}
+        self.HardwareConfigurationResponse[3] = {"bbbb","Number of User Presets"}
+        -- iterator
+        self.HardwareConfigurationResponse[4] = {"cc","Number of Simms Installed"}
+        self.HardwareConfigurationResponse[5] = {"dd","Number of Information Bytes per Sim"}
+        -- set
+        self.HardwareConfigurationResponse[6] = {"eeee","Simm ID"}
+        self.HardwareConfigurationResponse[7] = {"ffff","Number of Sim Presets"}
+        self.HardwareConfigurationResponse[8] = {"gggg","Number of Sim Instruments"}
+        
+        self.fetchDataUsingPosition = function(msg,startIndex,length)
+            local nextIndex = startIndex+length-1
+            local result = string.sub(msg,startIndex,nextIndex)
+            return result, nextIndex
+        end
+
+
+        self.HardwareConfigurationResponseData = {
+            mask = self.HardwareConfigurationResponse[0][1],    -- [0]
+            command = self.HardwareConfigurationResponse[1][1], -- [1]
+            ---@type string
+            userPresetCount = "", -- [3]
+            ---@type string
+            simCount = "",        -- [4]
+            ---@type string
+            simBytesPer = "",     -- [5]
+            
+            --- single simData object for building simDataTable: NOT FOR STORING DATA DIRECTLY 
+            -- fields [6,7,8]
+            -- simSimPresetsMask = string.format("%s,%s,%s",
+            --     self.HardwareConfigurationResponse[6][1], --eeee
+            --     self.HardwareConfigurationResponse[7][1], --ffff
+            --     self.HardwareConfigurationResponse[8][1]  --gggg
+            -- ),
+
+            ---@type table
+            simDataTable = {                    -- [6,7,8]
+                ---@type string
+                simID = "",                -- [6]
+                ---@type string            
+                simPresetCount = "",       -- [7]
+                ---@type string
+                simInstrumentCount = ""    -- [8]
+            },
+            --- table of simData objects
+            ---@type table
+            simDataTableList = {},             -- [6,7,8]
+
+
+            -- getter functions
+            getUserPresetCount = function(msg)
+                return self.fetchDataUsingMask(msg,
+                    self.HardwareConfigurationResponseData.mask,
+                    self.HardwareConfigurationResponseData[3]
+                )
+            end,
+
+            getSimCount = function(msg)
+                return self.fetchDataUsingMask(msg,
+                    self.HardwareConfigurationResponseData.mask,
+                    self.HardwareConfigurationResponseData[4]
+                )
+            end,
+
+            ---iterator for collecting data for multiple simms
+            ---@param msg string - response message
+            ---@param simcount integer - number of simms to iterate
+            simDataIterator = function(msg,simcount)
+    
+                -- used provided simcount, or try the *Data simCount field
+                simcount = simcount or self.du.hex2IntBase16(self.HardwareConfigurationResponseData.simCount)
+                -- get pointer for the last position before iterator
+                local _, endIndex = string.find(
+                    self.HardwareConfigurationResponse[0][1],
+                    self.HardwareConfigurationResponse[5][1],
+                    1,true
+                )
+                -- setup for starting iterator
+                local startIndex = endIndex+1
+                local nextLen
+                local simdataList = {}
+                for i=1,simcount do
+                    -- open new simData object table
+                    local simdata = self.HardwareConfigurationResponseData.simDataTable
+                    -- get length of next field
+                    nextLen = #self.HardwareConfigurationResponse[6][1]
+                    -- fetch data from startIndex to nextLen, function return data and new position for next find
+                    simdata.simID, startIndex = self.fetchDataUsingPosition(msg,startIndex,nextLen)
+                    -- repeat
+                    nextLen = #self.HardwareConfigurationResponse[7][1]
+                    simdata.simPresetCount, startIndex = self.fetchDataUsingPosition(msg,startIndex,nextLen)
+                    -- repeat
+                    nextLen = #self.HardwareConfigurationResponse[8][1]
+                    simdata.simInstrumentCount, startIndex = self.fetchDataUsingPosition(msg,startIndex,#self.HardwareConfigurationResponse[8][1])
+                    -- add simdata to teh simDataTable
+                    simdataList[i] = simdata
+                end
+                return simdataList
+            end
+        }
     end
 
     do -- Setup Dump
@@ -884,12 +1025,23 @@ function RequestModel:new(o)
     ---@return boolean - . return true if starts with F0, ends with F7
     self.isSysexNonRealtime = function(msg)
         local du = DataUtils:new()
-        local resultStart = du.isStartsWith(RequestsTable.IdentityResponse,"F0",true)
-        local resultEnd = du.isEndsWith(RequestsTable.IdentityResponse,"F7",true)
+        local resultStart = du.isStartsWith(msg,"F0",true)
+        local resultEnd = du.isEndsWith(msg,"F7",true)
         if ((resultStart == true) and (resultEnd == true)) then return true
         else return false end
     end
 
+    ---Detect if message is Sysex Universal: [F0180F0055**F7]
+    ---Starts with F0180F0055 | Ends with F7
+    ---@param msg string - message to parse
+    ---@return boolean - . return true if starts with F0, ends with F7
+    self.isSysexUniversal = function(msg)
+        local du = DataUtils:new()
+        local resultStart = du.isStartsWith(msg,self.requestTypeEnum.SysexProteus,true)
+        local resultEnd = du.isEndsWith(msg,"F7",true)
+        if ((resultStart == true) and (resultEnd == true)) then return true
+        else return false end
+    end
     ---check that message is SysexNonRealtime, trim control bytes if true
     --- if error thrown, return the original message
     ---@param msg string - message to parse and clean
@@ -917,12 +1069,52 @@ function RequestModel:new(o)
                 returnMsg = msg
             end
         else -- NOTHING TO DO: if not msg not SysexNonRealtime, assign return msg to the original
-            status = string.format("msg is not SysexNonRealtime, nothing to do: [%]",msgOriginal)
+            status = string.format("msg is not SysexNonRealtime, nothing to do: [%s]",msgOriginal)
             returnMsg = msgOriginal
         end
 
         return returnMsg, status
     end
+
+
+    
+
+    ---check that message is SysexUniversal, trim control bytes if true
+    --- if error thrown, return the original message
+    ---@param msg string - message to parse and clean
+    ---@return string - . return cleaned message
+    ---@return string - . return status message
+    self.cleanSysexUniversalMessage = function(msg)
+        local status, returnMsg
+        local originalMsg = msg     -- save original msg in the event error occurs
+        -- if msg = nil, do nothing & return it
+        if (msg == nil) then return originalMsg, "NOTHING TODO: msg=nil, nothing to do" end
+
+        -- check if SysexUniversal
+        local isSysexUni = self.isSysexUniversal(msg)
+        print(tostring(isSysexUni))
+
+        -- stip SysexUniversal control bytes
+        if ( isSysexUni == true) then -- PROCESS MESSAGE
+            msg = string.sub(msg, #RequestModel.requestTypeEnum.SysexProteus+1 --[[+1 position offset--]] , #msg)
+            msg = string.sub(msg, 1, #msg-2)
+            -- check for something gone wrong 
+            if (msg == nil) then -- FAIL: if result = nil, assign return message to the orginal
+                status = string.format("Cleaned Message FAILED: original:[%s]",originalMsg)
+                returnMsg = originalMsg
+            else                 -- SUCCESS: assign return msg the cleaned message
+                status = string.format("Cleaned Message: original:[%s] cleaned:[%s]",originalMsg,msg)
+                returnMsg = msg
+            end
+        else -- NOTHING TO DO: if not msg not SysexUniversal, assign return msg to the original
+            status = string.format("msg is not SysexUniversal, nothing to do: [%s]",originalMsg)
+            returnMsg = originalMsg
+        end
+
+        return returnMsg, status
+    end
+
+
 
     --[[ pending functions ]]--
     self.dataNibblizeData = function() end
@@ -939,25 +1131,57 @@ end
 --[[ response parsing tests ]]--
 function ResponseParseTests()
   local result, msg, status
-  -- clean msg of SysexNonRealtime control bytes
+  local du = DataUtils:new()
   local reqModel = RequestModel:new()
-  msg, status = reqModel.cleanSysexNonRealtimeMessage(RequestsTable.IdentityResponse)
+
+  -- Identity Response
+  -- clean msg of SysexNonRealtime control bytes
+  msg, status = reqModel.cleanSysexNonRealtimeMessage(RequestsTable:new().IdentityResponse)
   print(string.format("current msg:[%s] status:[%s]",msg, status))
   -- extract data
-  local data = {}
-  data[#data+1] = reqModel.fetchDataUsingMask(msg,
-    reqModel.DeviceInquiryResponse[0][1],
-    reqModel.DeviceInquiryResponse[4][1]
+  -- fetch DeviceInquiryReponseData
+  local mask = reqModel.DeviceInquiryResponse[0][1]
+  for i=4,6 do -- iterate fields and assign to reciprocal indices in the data table
+    reqModel.DeviceInquiryResponseData[i] =  reqModel.fetchDataUsingMask(msg,
+        mask,
+        reqModel.DeviceInquiryResponse[i][1]
     )
-    data[#data+1] = reqModel.fetchDataUsingMask(msg,
-    reqModel.DeviceInquiryResponse[0][1],
-    reqModel.DeviceInquiryResponse[5][1]
+  end
+  print(table.concat(reqModel.DeviceInquiryResponseData,","))
+
+
+
+
+  -- HWConfigDump
+  -- fetch HWConfigDump & clean it of sysex control bytes
+  msg,status = RequestModel.cleanSysexUniversalMessage(RequestsTable:new().HardwareConfigurationResponse)
+  print(string.format("current msg:[%s] status:[%s]",msg, status))
+
+  mask = reqModel.HardwareConfigurationResponse[0][1]
+  reqModel.HardwareConfigurationResponseData.userPresetCount = reqModel.fetchDataUsingMask(msg, mask,
+    reqModel.HardwareConfigurationResponse[3][1]
+  )
+  reqModel.HardwareConfigurationResponseData.simCount = reqModel.fetchDataUsingMask(msg, mask,
+    reqModel.HardwareConfigurationResponse[4][1]
+  )
+  reqModel.HardwareConfigurationResponseData.simBytesPer = reqModel.fetchDataUsingMask(msg, mask,
+    reqModel.HardwareConfigurationResponse[5][1]
+  )
+
+  reqModel.HardwareConfigurationResponseData.simDataTable = reqModel.HardwareConfigurationResponseData.simDataIterator(msg,
+        du.hex2IntBase16(reqModel.HardwareConfigurationResponseData.simCount)
     )
-    data[#data+1] = reqModel.fetchDataUsingMask(msg,
-    reqModel.DeviceInquiryResponse[0][1],
-    reqModel.DeviceInquiryResponse[6][1]
-    )
-  print(table.concat(data,","))
+
+
+--   for i=2,8 do
+--     reqModel.HardwareConfigurationResponseData[i] = reqModel.fetchDataUsingMask(msg,
+--         mask,
+--         reqModel.HardwareConfigurationResponse[i][1]
+--     )
+--   end
+  print(table.concat(reqModel.HardwareConfigurationResponseData.simDataTableList,","))
+
+
 
 end
 ResponseParseTests()
