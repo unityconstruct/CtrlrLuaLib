@@ -2,6 +2,21 @@
 local dump = "F0180F00550A010100F7"
 
 
+local RequestsTable = {}
+function RequestsTable:new(o)
+  o = o or {}
+  setmetatable({},self)
+  self.__index = self
+  -- identity request
+  self.IdentityRequest = "F07E000601F7"
+  self.IdentityResponse = "F07E0006021804040D00322E3030F7"
+  return self
+end
+local newClass = RequestsTable:new()
+
+
+
+
 
 
 --[[ DataUtils Object as a Table: START ]]--
@@ -112,6 +127,26 @@ function DataUtils:new(o)
     end
   end
 
+  ---check that haystack ends with needle
+  ---@param haystack any - value to search in
+  ---@param needle any - value to search for
+  ---@param boolPlain any - true = use 'plain' text search, false = use 'pattern matching'
+  ---@return boolean - . return true if haystack ends with needle
+  self.isEndsWith = function(haystack,needle,boolPlain)
+    local haystackSize = #haystack
+    local needleSize = #needle
+    local start = haystackSize - needleSize +1 -- +1 = offset
+    boolPlain = boolPlain or true
+
+    local starts = string.find(haystack,needle,start,boolPlain)
+    if (starts == nil) then
+        return false
+    else
+        if (starts == start) then
+          return true
+        else return false end
+    end
+  end
 
   --[[ hex formatting ]]--
 
@@ -843,6 +878,52 @@ function RequestModel:new(o)
         -- return request
     end
 
+    ---Detect if message is Sysex NonRealTime: [F0**F7]
+    ---Starts with F0 | Ends with F7
+    ---@param msg string - message to parse
+    ---@return boolean - . return true if starts with F0, ends with F7
+    self.isSysexNonRealtime = function(msg)
+        local du = DataUtils:new()
+        local resultStart = du.isStartsWith(RequestsTable.IdentityResponse,"F0",true)
+        local resultEnd = du.isEndsWith(RequestsTable.IdentityResponse,"F7",true)
+        if ((resultStart == true) and (resultEnd == true)) then return true
+        else return false end
+    end
+
+    ---check that message is SysexNonRealtime, trim control bytes if true
+    --- if error thrown, return the original message
+    ---@param msg string - message to parse and clean
+    ---@return string - . return cleaned message
+    ---@return string - . return status message
+    self.cleanSysexNonRealtimeMessage = function(msg)
+        local status, returnMsg
+        local msgOriginal = msg     -- save original msg in the event error occurs
+        -- if msg = nil, do nothing & return it
+        if (msg == nil) then return msgOriginal, "NOTHING TODO: msg=nil, nothing to do" end
+
+        -- check if SysexNonRealtime
+        local isSysexNRT = self.isSysexNonRealtime(msg)
+        print(tostring(isSysexNRT))
+        -- stip SysexNonRealtime control bytes
+        if ( isSysexNRT == true) then -- PROCESS MESSAGE
+            msg = string.sub(msg, 3, #msg)
+            msg = string.sub(msg, 1, #msg-2)
+            -- check for something gone wrong 
+            if (msg == nil) then -- FAIL: if result = nil, assign return message to the orginal
+                status = string.format("Cleaned Message FAILED: original:[%s]",msgOriginal)
+                returnMsg = msgOriginal
+            else                 -- SUCCESS: assign return msg the cleaned message
+                status = string.format("Cleaned Message: original:[%s] cleaned:[%s]",msgOriginal,msg)
+                returnMsg = msg
+            end
+        else -- NOTHING TO DO: if not msg not SysexNonRealtime, assign return msg to the original
+            status = string.format("msg is not SysexNonRealtime, nothing to do: [%]",msgOriginal)
+            returnMsg = msgOriginal
+        end
+
+        return returnMsg, status
+    end
+
     --[[ pending functions ]]--
     self.dataNibblizeData = function() end
     self.dataDeNibblizeData = function() end
@@ -854,6 +935,32 @@ end
 --[[ RequestModel holding ALL requests & builder/util functions: END ]]--
 
 
+
+--[[ response parsing tests ]]--
+function ResponseParseTests()
+  local result, msg, status
+  -- clean msg of SysexNonRealtime control bytes
+  local reqModel = RequestModel:new()
+  msg, status = reqModel.cleanSysexNonRealtimeMessage(RequestsTable.IdentityResponse)
+  print(string.format("current msg:[%s] status:[%s]",msg, status))
+  -- extract data
+  local data = {}
+  data[#data+1] = reqModel.fetchDataUsingMask(msg,
+    reqModel.DeviceInquiryResponse[0][1],
+    reqModel.DeviceInquiryResponse[4][1]
+    )
+    data[#data+1] = reqModel.fetchDataUsingMask(msg,
+    reqModel.DeviceInquiryResponse[0][1],
+    reqModel.DeviceInquiryResponse[5][1]
+    )
+    data[#data+1] = reqModel.fetchDataUsingMask(msg,
+    reqModel.DeviceInquiryResponse[0][1],
+    reqModel.DeviceInquiryResponse[6][1]
+    )
+  print(table.concat(data,","))
+
+end
+ResponseParseTests()
 
 
 --[[ Dump Tests
