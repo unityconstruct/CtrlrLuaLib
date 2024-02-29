@@ -2,23 +2,6 @@
 local dump = "F0180F00550A010100F7"
 
 
-local NewClass = {}
-function NewClass:new(o)
-  o = o or {}
-  setmetatable({},self)
-  self.__index = self
-  self.myProperty = "Excellent"
-  self.myTable = {
-    myRow = {1,"cell1"}
-  }
-  self.myFunction = function() 
-    return string.format("My Property is Hella %s!",self.myProperty) end
-  return self
-end
-local newClass = NewClass:new()
-print(newClass.myProperty)
-print(newClass.myFunction())
-print(NewClass:new():myFunction())
 
 
 
@@ -230,7 +213,7 @@ function DataUtils:new(o)
     return string.format("%2.x",valueInt128)
   end
 
-  self.Int2Hex256 = function(valueInt256)
+  self.Int2Hex2Byte = function(valueInt256)
     return string.format("%04x",valueInt256)
   end
 
@@ -377,6 +360,23 @@ end
 --[[ DataUtils Object as a Table: END ]]--
 
 
+local DeviceModel = {}
+function DeviceModel:new(o)
+  o = o or {}
+  setmetatable({},self)
+  self.__index = self
+
+  self.du = DataUtils:new()
+  self.returnHex2Integer = function(hexString) return self.du.hex2IntBase16(hexString) end
+  self.returnInteger2Hex255 = function(intNum) return self.du.Int2Hex2Byte(intNum) end
+
+  self.myFunction = function() 
+    return string.format("My Property is Hella %s!",self.myProperty) end
+  return self
+end
+
+
+
 --[[ PoC model for creating a request tables that can be used to creat messages or parse responses ]]--
 --[[ RequestModel holding ALL requests & builder/util functions: START ]]--
 local RequestModel = {}
@@ -519,12 +519,7 @@ function RequestModel:new(o)
         self.HardwareConfigurationResponse[7] = {"ffff","Number of Sim Presets"}
         self.HardwareConfigurationResponse[8] = {"gggg","Number of Sim Instruments"}
         
-        self.fetchDataUsingPosition = function(msg,startIndex,length)
-            local nextIndex = startIndex+length  -- moves pointer forward for next iteration
-            local endIndex = startIndex+length-1 -- string.sub() uses start/end pos , not start/len, so subtract (-1)
-            local result = string.sub(msg,startIndex,endIndex)
-            return result, nextIndex
-        end
+
 
         self.HardwareConfigurationResponseData = {
             mask = self.HardwareConfigurationResponse[0][1],    -- [0]
@@ -582,13 +577,13 @@ function RequestModel:new(o)
                     -- get length of next field
                     nextLen = #self.HardwareConfigurationResponse[6][1]
                     -- fetch data from startIndex to nextLen, function return data and new position for next find
-                    simdata.simID, startIndex = self.fetchDataUsingPosition(msg,startIndex,nextLen)
+                    simdata.simID, startIndex = self.fetchDataUsingPositionAndLength(msg,startIndex,nextLen)
                     -- repeat
                     nextLen = #self.HardwareConfigurationResponse[7][1]
-                    simdata.simPresetCount, startIndex = self.fetchDataUsingPosition(msg,startIndex,nextLen)
+                    simdata.simPresetCount, startIndex = self.fetchDataUsingPositionAndLength(msg,startIndex,nextLen)
                     -- repeat
                     nextLen = #self.HardwareConfigurationResponse[8][1]
-                    simdata.simInstrumentCount, startIndex = self.fetchDataUsingPosition(msg,startIndex,#self.HardwareConfigurationResponse[8][1])
+                    simdata.simInstrumentCount, startIndex = self.fetchDataUsingPositionAndLength(msg,startIndex,#self.HardwareConfigurationResponse[8][1])
                     -- add simdata to teh simDataTable
                     simdataList[i] = simdata
                 end
@@ -616,6 +611,23 @@ function RequestModel:new(o)
                 self.HardwareConfigurationResponseData.simDataTableList = self.HardwareConfigurationResponseData.simDataIterator(msg,
                         self.du.hex2IntBase16(self.HardwareConfigurationResponseData.simCount)
                 )
+            end
+        }
+        self.HardwareConfigurationResponseObject = {
+            mask_0 = self.HardwareConfigurationResponseData[0],
+            command_1 = self.HardwareConfigurationResponseData[1],
+            generalInfoBytes_2 = "",
+            userPresetCount_3 = "",
+            simmCount_4 = "",
+            simmInfoBytesPer_5 = "",
+            simmDataList_6 = {},
+            simmDataModel = {
+                simmID = "",
+                simmPresets = "",
+                simmInstruments = ""
+            },
+            returnInteger = function(hexString)
+                return self.du.hex2IntBase16(hexString)
             end
         }
     end
@@ -967,6 +979,28 @@ function RequestModel:new(o)
 
     --[[ utility methods ]]--
 
+    -- --- return substring of haystack by startIndex and field length
+    -- self.fetchDataUsingPositionAndLength = function(haystack,startIndex,length)
+    --   local nextIndex = startIndex+length  -- moves pointer forward for next iteration
+    --   local endIndex = startIndex+length-1 -- string.sub() uses start/end pos , not start/len, so subtract (-1)
+    --   local result = string.sub(haystack,startIndex,endIndex)
+    --   return result, nextIndex
+    -- end
+
+      --- return substring of haystack by startIndex and field length
+      self.fetchDataUsingPositionAndLength = function(haystack,pointer,length)
+        local last = pointer + length - 1
+        return self.fetchDataUsingPositionStartEnd(haystack,pointer,last)
+      end
+
+    --- return substring of haystack by startIndex and field length
+    self.fetchDataUsingPositionStartEnd = function(haystack,first,last)
+      local result = string.sub(haystack,first,last)
+      -- set pointer to first + len
+      local pointer = first + (last-first) + 1 -- moves pointer forward for next iteration
+      return result, pointer
+    end
+
     --- Fetches a substring from HAYSTACK, using a MASK/NEEDLE as a lookup table<br/>
      --searches MASK for NEED for START, END positions<br/>
      --returns substring from HAYSTACK of START, END<br/>
@@ -1139,13 +1173,28 @@ end
 
 --[[ response parsing tests ]]--
 function ResponseParseTests()
-  local result, msg, status
+  local result, msg, status, haystack, needle, pointer, len
+  local results = {}
   local du = DataUtils:new()
   local reqModel = RequestModel:new()
 
 
-  reqModel.HardwareConfigurationResponseData.getHardwareConfigResponseData(RequestsTable:new().HardwareConfigurationResponse)
-  print(string.format("Instrument Count: [%s]",reqModel.HardwareConfigurationResponseData.simDataTableList[1].simInstrumentCount))
+
+
+  print("stop:" .. result)
+  
+
+
+
+
+
+
+
+
+
+-- HWConfigDump
+--   reqModel.HardwareConfigurationResponseData.getHardwareConfigResponseData(RequestsTable:new().HardwareConfigurationResponse)
+--   print(string.format("Instrument Count: [%s]",reqModel.HardwareConfigurationResponseData.simDataTableList[1].simInstrumentCount))
 
 
 end
@@ -1153,7 +1202,194 @@ ResponseParseTests()
 
 
 
+--[[ fetchData functions
+    haystack = "aaaabbbbccccdd"
+  pointer = 1
+  len = 4
+  -- reqModel.fetchDataUsingPositionAndLength(haystack,pointer,len)
+  len = 4 result, pointer = reqModel.fetchDataUsingPositionAndLength(haystack,pointer,len)
+  len = 4 result, pointer = reqModel.fetchDataUsingPositionAndLength(haystack,pointer,len)
+  len = 4 result, pointer = reqModel.fetchDataUsingPositionAndLength(haystack,pointer,len)
+  len = 2 result, pointer = reqModel.fetchDataUsingPositionAndLength(haystack,pointer,len)
+  pointer = 1
+  len = 4 result, pointer = reqModel.fetchDataUsingPositionStartEnd(haystack,pointer,pointer+len-1)
+  len = 4 result, pointer = reqModel.fetchDataUsingPositionStartEnd(haystack,pointer,pointer+len-1)
+  len = 4 result, pointer = reqModel.fetchDataUsingPositionStartEnd(haystack,pointer,pointer+len-1)
+  len = 2 result, pointer = reqModel.fetchDataUsingPositionStartEnd(haystack,pointer,pointer+len-1)
+]]
 
+--[[ maphex
+function mapHex2()
+  local results = {}
+  results[#results+1] = string.format("du.hex2IntBase16(\"A0\")  : [%d]", du.hex2IntBase16("A0")   ) --   160
+  results[#results+1] = string.format("du.hex2IntBase16(\"A0A0\"): [%d]", du.hex2IntBase16("A0A0") ) -- 41120
+  results[#results+1] = string.format("du.hex2IntBase16(\"FF00\"): [%d]", du.hex2IntBase16("FF00") ) -- 65280
+  results[#results+1] = string.format("du.hex2IntBase16(\"00FF\"): [%d]", du.hex2IntBase16("00FF") ) --   255
+  results[#results+1] = string.format("du.hex2IntBase16(\"FFFF\"): [%d]", du.hex2IntBase16("FFFF") ) -- 65535
+  results[#results+1] = string.format("du.hex2IntBase16(\"0000\"): [%d]", du.hex2IntBase16("0000") ) --     0
+  results[#results+1] = string.format("du.Int2Hex2Byte(255)    : [%s]", du.Int2Hex2Byte(255)     )   --  00ff
+  results[#results+1] = string.format("du.Int2Hex2Byte(1024)   : [%s]", du.Int2Hex2Byte(1024)    )   --  0400
+  results[#results+1] = string.format("du.Int2Hex2Byte(9999)   : [%s]", du.Int2Hex2Byte(9999)    )   --  270f
+  results[#results+1] = string.format("du.Int2Hex128(255)      : [%s]", du.Int2Hex128(255)       ) --  00ff
+  results[#results+1] = string.format("du.Int2Hex128(1024)     : [%s]", du.Int2Hex128(1024)      ) --  0400
+  results[#results+1] = string.format("du.Int2Hex128(9999)     : [%s]", du.Int2Hex128(9999)      ) --  270f
+  results[#results+1] = string.format("du.Int2Hex128(-1)       : [%s]", du.Int2Hex128(-1)        )
+
+  -- for v pairs (results) do
+  --   print(v)
+  -- end
+  for key, value in pairs(results) do
+    print(string.format("key:[%s] value:[%s]",key,value))
+  end
+
+
+end
+
+function mapHex(value,length)
+  local results = {}
+
+  -- results[#results+1] = string.format("du.hex2IntBase16('A0')  : [%d]", du.hex2IntBase16('A0')   ) --   160
+
+  -- results[#results+1] = string.format("%.0008x",value):sub(length)
+  -- results[#results+1] = string.format("%.008x",value):sub(length)
+  results[#results+1] = string.format("%.08x",value):sub(length)
+  results[#results+1] = string.format("%.8x",value):sub(length)
+
+  -- results[#results+1] = string.format("%.0007x",value):sub(length)
+  -- results[#results+1] = string.format("%.007x",value):sub(length)
+  results[#results+1] = string.format("%.07x",value):sub(length)
+  results[#results+1] = string.format("%.7x",value):sub(length)
+
+  -- results[#results+1] = string.format("%.0006x",value):sub(length)
+  -- results[#results+1] = string.format("%.006x",value):sub(length)
+  results[#results+1] = string.format("%.06x",value):sub(length)
+  results[#results+1] = string.format("%.6x",value):sub(length)
+
+  -- results[#results+1] = string.format("%.0005x",value):sub(length)
+  -- results[#results+1] = string.format("%.005x",value):sub(length)
+  results[#results+1] = string.format("%.05x",value):sub(length)
+  results[#results+1] = string.format("%.5x",value):sub(length)
+
+  -- results[#results+1] = string.format("%.0004x",value):sub(length)
+  -- results[#results+1] = string.format("%.004x",value):sub(length)
+  results[#results+1] = string.format("%.04x",value):sub(length)
+  results[#results+1] = string.format("%.4x",value):sub(length)
+
+  -- results[#results+1] = string.format("%.0003x",value):sub(length)
+  -- results[#results+1] = string.format("%.003x",value):sub(length)
+  results[#results+1] = string.format("%.03x",value):sub(length)
+  results[#results+1] = string.format("%.3x",value):sub(length)
+
+  -- results[#results+1] = string.format("%.0002x",value):sub(length)
+  -- results[#results+1] = string.format("%.002x",value):sub(length)
+  results[#results+1] = string.format("%.02x",value):sub(length)
+  results[#results+1] = string.format("%.2x",value):sub(length)
+
+
+  -- results[#results+1] = string.format("%.0001x",value):sub(length)
+  -- results[#results+1] = string.format("%.001x",value):sub(length)
+  results[#results+1] = string.format("%.01x",value):sub(length)
+  results[#results+1] = string.format("%.1x",value):sub(length)
+
+
+  -- results[#results+1] = string.format("%00080x",value):sub(length)
+  -- results[#results+1] = string.format("%0080x",value):sub(length)
+  results[#results+1] = string.format("%080x",value):sub(length)
+  results[#results+1] = string.format("%80x",value):sub(length)
+  results[#results+1] = string.format("%0008x",value):sub(length)
+  results[#results+1] = string.format("%008x",value):sub(length)
+  results[#results+1] = string.format("%08x",value):sub(length)
+  results[#results+1] = string.format("%8x",value):sub(length)
+
+  -- results[#results+1] = string.format("%00070x",value):sub(length)
+  -- results[#results+1] = string.format("%0070x",value):sub(length)
+  results[#results+1] = string.format("%070x",value):sub(length)
+  results[#results+1] = string.format("%70x",value):sub(length)
+  results[#results+1] = string.format("%0007x",value):sub(length)
+  results[#results+1] = string.format("%007x",value):sub(length)
+  results[#results+1] = string.format("%07x",value):sub(length)
+  results[#results+1] = string.format("%7x",value):sub(length)
+
+  -- results[#results+1] = string.format("%00060x",value):sub(length)
+  -- results[#results+1] = string.format("%0060x",value):sub(length)
+  results[#results+1] = string.format("%060x",value):sub(length)
+  results[#results+1] = string.format("%60x",value):sub(length)
+  results[#results+1] = string.format("%0006x",value):sub(length)
+  results[#results+1] = string.format("%006x",value):sub(length)
+  results[#results+1] = string.format("%06x",value):sub(length)
+  results[#results+1] = string.format("%6x",value):sub(length)
+
+  -- results[#results+1] = string.format("%00050x",value):sub(length)
+  -- results[#results+1] = string.format("%0050x",value):sub(length)
+  results[#results+1] = string.format("%050x",value):sub(length)
+  results[#results+1] = string.format("%50x",value):sub(length)
+  results[#results+1] = string.format("%0005x",value):sub(length)
+  results[#results+1] = string.format("%005x",value):sub(length)
+  results[#results+1] = string.format("%05x",value):sub(length)
+  results[#results+1] = string.format("%5x",value):sub(length)
+
+  -- results[#results+1] = string.format("%00040x",value):sub(length)
+  -- results[#results+1] = string.format("%0040x",value):sub(length)
+  results[#results+1] = string.format("%040x",value):sub(length)
+  results[#results+1] = string.format("%40x",value):sub(length)
+  results[#results+1] = string.format("%0004x",value):sub(length)
+  results[#results+1] = string.format("%004x",value):sub(length)
+  results[#results+1] = string.format("%04x",value):sub(length)
+  results[#results+1] = string.format("%4x",value):sub(length)
+
+  -- results[#results+1] = string.format("%00030x",value):sub(length)
+  -- results[#results+1] = string.format("%0030x",value):sub(length)
+  results[#results+1] = string.format("%030x",value):sub(length)
+  results[#results+1] = string.format("%30x",value):sub(length)
+  results[#results+1] = string.format("%0003x",value):sub(length)
+  results[#results+1] = string.format("%003x",value):sub(length)
+  results[#results+1] = string.format("%03x",value):sub(length)
+  results[#results+1] = string.format("%3x",value):sub(length)
+
+  -- results[#results+1] = string.format("%00020x",value):sub(length)
+  -- results[#results+1] = string.format("%0020x",value):sub(length)
+  results[#results+1] = string.format("%020x",value):sub(length)
+  results[#results+1] = string.format("%20x",value):sub(length)
+  results[#results+1] = string.format("%0002x",value):sub(length)
+  results[#results+1] = string.format("%002x",value):sub(length)
+  results[#results+1] = string.format("%02x",value):sub(length)
+  results[#results+1] = string.format("%2x",value):sub(length)
+
+  -- results[#results+1] = string.format("%00010x",value):sub(length)
+  -- results[#results+1] = string.format("%0010x",value):sub(length)
+  results[#results+1] = string.format("%010x",value):sub(length)
+  results[#results+1] = string.format("%10x",value):sub(length)
+  results[#results+1] = string.format("%0001x",value):sub(length)
+  results[#results+1] = string.format("%001x",value):sub(length)
+  results[#results+1] = string.format("%01x",value):sub(length)
+  results[#results+1] = string.format("%1x",value):sub(length)
+
+
+  -- results[#results+1] = string.format("%01x",value):sub(length)
+  -- results[#results+1] = string.format("%01x",value):sub(length)
+  -- results[#results+1] = string.format("%01x",value):sub(length)
+  -- results[#results+1] = string.format("%01x",value):sub(length)
+
+  for key, value in pairs(results) do
+    print(string.format("key:[%s] value:[%s]",key,value))
+  end
+end
+
+local values = {"-1","0","1","127","128","254","255","1024","1023","65534","65535","65536"}
+for key, value in pairs(values) do
+  for len=1,8 do
+    mapHex(value,len)
+  end
+end
+
+
+]]--
+
+-- string.format("%.2x",value):sub(length)
+-- string.format("%04x",valueInt256)
+-- string.format("%.4x",value):sub(length)
+-- string.format("%.2x",value):sub(length)
+-- string.format("%04x",valueInt256)
 
 
 --[[ Dump Tests
