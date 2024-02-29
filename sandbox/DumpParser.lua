@@ -1,10 +1,6 @@
 
 local dump = "F0180F00550A010100F7"
 
-
-
-
-
 local RequestsTable = {}
 function RequestsTable:new(o)
   o = o or {}
@@ -17,11 +13,6 @@ function RequestsTable:new(o)
   self.HardwareConfigurationResponse = "F0180F00550902000401060E0000043B09F7"
   return self
 end
-
-
-
-
-
 
 --[[ DataUtils Object as a Table: START ]]--
 local DataUtils = {}
@@ -359,7 +350,6 @@ function DataUtils:new(o)
 end
 --[[ DataUtils Object as a Table: END ]]--
 
-
 local DeviceModel = {}
 function DeviceModel:new(o)
   o = o or {}
@@ -375,18 +365,18 @@ function DeviceModel:new(o)
   return self
 end
 
-
-
 --[[ PoC model for creating a request tables that can be used to creat messages or parse responses ]]--
 --[[ RequestModel holding ALL requests & builder/util functions: START ]]--
+
+---@table
 local RequestModel = {}
+---instantiate a new RequestModel Table
+---@param o any
 function RequestModel:new(o)
     o = o or {}
     setmetatable({},self)
     self.__index = self
-
     self.du = DataUtils:new()
-
     -- values for midi message type
     self.requestTypeEnum = {
         SysexNonRealtime = "F07E",
@@ -518,19 +508,147 @@ function RequestModel:new(o)
         self.HardwareConfigurationResponse[6] = {"eeee","Simm ID"}
         self.HardwareConfigurationResponse[7] = {"ffff","Number of Sim Presets"}
         self.HardwareConfigurationResponse[8] = {"gggg","Number of Sim Instruments"}
+
+        ---Contract that stores first/last indices for each field in a response
+        ---@type table
+        self.HardwareConfigurationDataContract = {
+          ---@type string 
+          MaskMessage = "09aabbbbccddeeeeffffgggg",
+          ---@type string 
+          MaskSimmObjects = "eeeeffffgggg",
+          ---@type string 
+          Command = "09",
+          ---@type table
+          GeneralInfoBytes = {},
+          ---@type table
+          UserPresetCount = {},
+          ---@type table
+          SimmCount = {},
+          ---@type table
+          SimmBytePer = {},
+          ---@type integer
+          SimmsTableStartPointer = 0,
+          ---@type table<table<integer,integer>,table<integer,integer>,table<integer,integer>>
+          SimmsTableList = {},
+          ---@type table
+          SimmsTableModel = {
+            ---@type table<integer,integer>
+            SimmID = {},
+            ---@type table<integer,integer>
+            SimmPresetCount = {},
+            ---@type table<integer,integer>
+            SimmInstrumentCount = {}
+          }
+        }
+
+        ---Default Structure for a contract that holds first/last positions for each field in the response
+        ---@param response string resonse message
+        ---@return table returns a Contract Table
+        -- self.HardwareConfigurationDataContract.new = function(response)
+        function self.HardwareConfigurationDataContract:new(response)
+          setmetatable({},self)
+          self.__index = self
+
+          -- local contract = self.HardwareConfigurationDataContract.new()
+          local mask = RequestModel.HardwareConfigurationResponse[0][1]
+          self.MaskMessage = mask
+          self.MaskSimmObjects = "eeeeffffgggg"
+          self.Command = RequestModel.fetchDataPositionFirstLastFormats(mask,RequestModel.HardwareConfigurationResponse[1][1])[2]
+          self.GeneralInfoBytes = RequestModel.fetchDataPositionFirstLastFormats(mask,RequestModel.HardwareConfigurationResponse[2][1])[2]
+          self.UserPresetCount = RequestModel.fetchDataPositionFirstLastFormats(mask,RequestModel.HardwareConfigurationResponse[3][1])[2]
+          self.SimmCount = RequestModel.fetchDataPositionFirstLastFormats(mask,RequestModel.HardwareConfigurationResponse[4][1])[2]
+          self.SimmBytePer = RequestModel.fetchDataPositionFirstLastFormats(mask,RequestModel.HardwareConfigurationResponse[5][1])[2]
+          self.SimmsTableStartPointer = self.SimmBytePer[2]
+          self.SimmsTableList = {}
+          local pointer = self.SimmsTableStartPointer
+          local countHex, _ = RequestModel.fetchDataUsingPositionStartEnd(response,self.SimmCount[1], self.SimmCount[2])
+          local count = RequestModel.du.hex2IntBase16(countHex)
+          for i=1,count do
+            local t = {}
+            local first,last,len
+            first,last,len = RequestModel.fetchDataPositionFirstLast(self.MaskSimmObjects,RequestModel.HardwareConfigurationResponse[6][1])
+            t.SimmID = {first+pointer,last+pointer} -- shift first,last by pointer amount & asign
+            first,last,len = RequestModel.fetchDataPositionFirstLast(self.MaskSimmObjects,RequestModel.HardwareConfigurationResponse[7][1])
+            t.SimmPresetCount = {first+pointer,last+pointer} -- shift first,last by pointer amount & asign
+            first,last,len = RequestModel.fetchDataPositionFirstLast(self.MaskSimmObjects,RequestModel.HardwareConfigurationResponse[8][1])
+            t.SimmInstrumentCount = {first+pointer,last+pointer} -- shift first,last by pointer amount & asign
+            pointer = pointer + len -- update pointer by len
+            table.insert(self.SimmsTableList,t)
+          end
+          return self
+            -- ---@type string 
+            -- self.MaskMessage = "09aabbbbccddeeeeffffgggg"
+            -- ---@type string 
+            -- self.MaskSimmObjects = "eeeeffffgggg"
+            -- ---@type string 
+            -- self.Command = "09"
+            -- ---@type table
+            -- self.GeneralInfoBytes = {}
+            -- ---@type table
+            -- self.UserPresetCount = {}
+            -- ---@type table
+            -- self.SimmCount = {}
+            -- ---@type table
+            -- self.SimmBytePer = {}
+            -- ---@type integer
+            -- self.SimmsTableStartPointer = 0
+            -- ---@type table
+            -- self.SimmsTableList = {}
+            -- ---@type table
+            -- self.SimmsTableModel = {
+            --   ---@type table
+            --   SimmID = {},
+            --   ---@type table
+            --   SimmPresetCount = {},
+            --   ---@type table
+            --   SimmInstrumentCount = {}
+            -- }
+          end
+
+        --[[
+        self.BuildHardwareConfigurationDataContract = function(response)
+          local contract = self.HardwareConfigurationDataContract.new()
+          local mask = self.HardwareConfigurationResponse[0][1]
+          contract.MaskMessage = mask
+          contract.MaskSimmObjects = "eeeeffffgggg"
+          contract.Command = RequestModel.fetchDataPositionFirstLastFormats(mask,self.HardwareConfigurationResponse[1][1])[2]
+          contract.GeneralInfoBytes = RequestModel.fetchDataPositionFirstLastFormats(mask,self.HardwareConfigurationResponse[2][1])[2]
+          contract.UserPresetCount = RequestModel.fetchDataPositionFirstLastFormats(mask,self.HardwareConfigurationResponse[3][1])[2]
+          contract.SimmCount = RequestModel.fetchDataPositionFirstLastFormats(mask,self.HardwareConfigurationResponse[4][1])[2]
+          contract.SimmBytePer = RequestModel.fetchDataPositionFirstLastFormats(mask,self.HardwareConfigurationResponse[5][1])[2]
+          contract.SimmsTableStartPointer = contract.SimmCount[2]+1
+          contract.SimmsTableList = {}
+          local pointer = contract.SimmsTableStartPointer
+          local countHex, _ = RequestModel.fetchDataUsingPositionStartEnd(response,contract.SimmCount[1], contract.SimmCount[2])
+          local count = self.du.hex2IntBase16(countHex)
+          for i=1,count do
+            local t = {}
+            local first,last,len
+            first,last,len = self.fetchDataPositionFirstLast(contract.MaskSimmObjects,self.HardwareConfigurationResponse[6][1])
+            t.SimmID = {first+pointer,last+pointer} -- shift first,last by pointer amount & asign
+            first,last,len = self.fetchDataPositionFirstLast(contract.MaskSimmObjects,self.HardwareConfigurationResponse[7][1])
+            t.SimmPresetCount = {first+pointer,last+pointer} -- shift first,last by pointer amount & asign
+            first,last,len = self.fetchDataPositionFirstLast(contract.MaskSimmObjects,self.HardwareConfigurationResponse[8][1])
+            t.SimmInstrumentCount = {first+pointer,last+pointer} -- shift first,last by pointer amount & asign
+            pointer = pointer + len -- update pointer by len
+            table.insert(contract.SimmsTableList,t)
+          end
+          return contract
+        end
         
+        ]]--
 
 
         self.HardwareConfigurationResponseData = {
-            mask = self.HardwareConfigurationResponse[0][1],    -- [0]
-            command = self.HardwareConfigurationResponse[1][1], -- [1]
+            mask = RequestModel.HardwareConfigurationResponse[0][1],    -- [0]
+            command = RequestModel.HardwareConfigurationResponse[1][1], -- [1]
             ---@type string
             userPresetCount = "", -- [3]
             ---@type string
             simCount = "",        -- [4]
             ---@type string
             simBytesPer = "",     -- [5]
-            ---@type table
+            ---@type table<string,string,string>
             simDataTable = {                   -- [6,7,8]
                 ---@type string
                 simID = "",                -- [6]
@@ -544,9 +662,9 @@ function RequestModel:new(o)
             simDataTableList = {},             -- [6,7,8]
             -- getter functions
             getUserPresetCount = function(msg)
-                return self.fetchDataUsingMask(msg,
-                    self.HardwareConfigurationResponseData.mask,
-                    self.HardwareConfigurationResponseData[3]
+                return RequestModel.fetchDataUsingMask(msg,
+                RequestModel.HardwareConfigurationResponseData.mask,
+                RequestModel.HardwareConfigurationResponseData[3]
                 )
             end,
             getSimCount = function(msg)
@@ -613,23 +731,99 @@ function RequestModel:new(o)
                 )
             end
         }
+
         self.HardwareConfigurationResponseObject = {
-            mask_0 = self.HardwareConfigurationResponseData[0],
-            command_1 = self.HardwareConfigurationResponseData[1],
-            generalInfoBytes_2 = "",
-            userPresetCount_3 = "",
-            simmCount_4 = "",
-            simmInfoBytesPer_5 = "",
-            simmDataList_6 = {},
+            ---@type string
+            mask = RequestModel.HardwareConfigurationResponse[0][1],
+            ---@type string
+            command = RequestModel.HardwareConfigurationResponse[1][1],
+            ---@type string
+            generalInfoBytes = "",
+            ---@type string
+            userPresetCount = "",
+            ---@type string
+            simmCount = "",
+            ---@type string
+            simmInfoBytesPer = "",
+            ---@type table
+            simmDataList = {},
+            ---@type table
             simmDataModel = {
+                ---@type string
                 simmID = "",
+                ---@type string
                 simmPresets = "",
+                ---@type string
                 simmInstruments = ""
             },
-            returnInteger = function(hexString)
-                return self.du.hex2IntBase16(hexString)
-            end
+            ---@type function
+            hex2int = function(hexString)
+                return RequestModel.du.hex2IntBase16(hexString)
+            end,
+            ---@type function
+            int2hex_2byte = function(int)
+               return RequestModel.du.Int2Hex2Byte(int)
+            end,
+            ---@type function
+            int2hex_1byte = function(int)
+              return RequestModel.du.hex2IntBase16(int)
+            end,
         }
+
+        ---return a new simmDataModel
+        ----@param o string
+        ---@return table
+        function self.HardwareConfigurationResponseObject.simmDataModel:new()
+          -- o=o or o
+          setmetatable({},self)
+          self.__index = self
+          return self
+        end
+
+
+        -- self.HardwareConfigurationResponseObject.new = function(response)
+        function self.HardwareConfigurationResponseObject:new (response)
+          -- o = o or o
+          setmetatable({},self)
+          self.__index = self
+
+          -- local obj = self.HardwareConfigurationResponseObject.new()
+          local contract = RequestModel.HardwareConfigurationDataContract:new(response)
+          self.generalInfoBytes = RequestModel.fetchDataUsingPositionStartEnd(response,contract.GeneralInfoBytes[1],contract.GeneralInfoBytes[2])
+          self.userPresetCount = RequestModel.fetchDataUsingPositionStartEnd(response,contract.UserPresetCount[1],contract.UserPresetCount[2])
+          self.simmCount = RequestModel.fetchDataUsingPositionStartEnd(response,contract.SimmCount[1], contract.SimmCount[2])
+          self.simmInfoBytesPer = RequestModel.fetchDataUsingPositionStartEnd(response,contract.SimmBytePer[1],contract.SimmBytePer[2])
+
+          for i=1,RequestModel.du.hex2IntBase16(self.simmCount) do
+            local simm = RequestModel.HardwareConfigurationResponseObject.simmDataModel:new()
+            simm.simmID = RequestModel.fetchDataUsingPositionStartEnd(response,contract.SimmsTableList[i].SimmID[1],contract.SimmsTableList[i].SimmID[2])
+            simm.simmPresets = RequestModel.fetchDataUsingPositionStartEnd(response,contract.SimmsTableList[i].SimmPresetCount[1],contract.SimmsTableList[i].SimmPresetCount[2])
+            simm.simmInstruments = RequestModel.fetchDataUsingPositionStartEnd(response,contract.SimmsTableList[i].SimmInstrumentCount[1],contract.SimmsTableList[i].SimmInstrumentCount[2])
+            table.insert(self.simmDataList,simm)
+            -- table.insert(RequestModel.HardwareConfigurationResponseObject.simmDataList,simm)
+          end
+
+
+
+          return self
+        end
+
+        -- self.BuildHardwareConfigurationDataObject = function(response)
+        --   local obj = self.HardwareConfigurationResponseObject.new()
+        --   local contract = self.HardwareConfigurationDataContract.new(response)
+        --   obj.generalInfoBytes = RequestModel.fetchDataUsingPositionStartEnd(response,contract.GeneralInfoBytes[1],contract.GeneralInfoBytes[2])
+        --   obj.userPresetCount = RequestModel.fetchDataUsingPositionStartEnd(response,contract.userPresetCount[1],contract.userPresetCount[2])
+        --   obj.simmCount = RequestModel.fetchDataUsingPositionStartEnd(response,contract.simmCount[1],contract.simmCount[2] )
+        --   obj.simmInfoBytesPer = RequestModel.fetchDataUsingPositionStartEnd(response,contract.simmInfoBytesPer[1],contract.GeneralInfoBytes[2])
+
+        --   for i=1,self.du.hex2IntBase16(obj.simmCount) do
+        --     local simm = obj.simmDataModel.new()
+        --     simm.simmId = RequestModel.fetchDataUsingPositionStartEnd(response,contract.SimmsTableList[i].simmID[1],contract.SimmsTableList[i].simmID[2])
+        --     simm.simmPresets = RequestModel.fetchDataUsingPositionStartEnd(response,contract.SimmsTableList[i].simmPresets[1],contract.SimmsTableList[i].simmPresets[2])
+        --     simm.simmInstruments = RequestModel.fetchDataUsingPositionStartEnd(response,contract.SimmsTableList[i].simmInstruments[1],contract.SimmsTableList[i].simmInstruments[2])
+        --     table.insert(obj.SimmsTableList,simm)
+        --   end
+        -- end
     end
 
     do -- Setup Dump
@@ -979,26 +1173,25 @@ function RequestModel:new(o)
 
     --[[ utility methods ]]--
 
-    -- --- return substring of haystack by startIndex and field length
-    -- self.fetchDataUsingPositionAndLength = function(haystack,startIndex,length)
-    --   local nextIndex = startIndex+length  -- moves pointer forward for next iteration
-    --   local endIndex = startIndex+length-1 -- string.sub() uses start/end pos , not start/len, so subtract (-1)
-    --   local result = string.sub(haystack,startIndex,endIndex)
-    --   return result, nextIndex
-    -- end
-
       --- return substring of haystack by startIndex and field length
       self.fetchDataUsingPositionAndLength = function(haystack,pointer,length)
         local last = pointer + length - 1
-        return self.fetchDataUsingPositionStartEnd(haystack,pointer,last)
+        return RequestModel.fetchDataUsingPositionStartEnd(haystack,pointer,last)
       end
 
     --- return substring of haystack by startIndex and field length
+
+    ---comment
+    ---@param haystack string string to search
+    ---@param first integer first index of substring
+    ---@param last integer last index of substring
+    ---@return string result found substring
+    ---@return integer length length of substring
     self.fetchDataUsingPositionStartEnd = function(haystack,first,last)
       local result = string.sub(haystack,first,last)
       -- set pointer to first + len
-      local pointer = first + (last-first) + 1 -- moves pointer forward for next iteration
-      return result, pointer
+      local length = #result -- moves pointer forward for next iteration
+      return result, length
     end
 
     --- Fetches a substring from HAYSTACK, using a MASK/NEEDLE as a lookup table<br/>
@@ -1027,6 +1220,40 @@ function RequestModel:new(o)
             end
         else return haystack
         end
+    end
+
+    ---search mask for 
+    ---@param haystack string - source to search
+    ---@param needle string - search teram
+    ---@return integer first if found, first position in haystack, else 0
+    ---@return integer last if found, last posisiton in haystack, else 0
+    ---@return integer len length of the needle
+    ---@return string msg status message
+    self.fetchDataPositionFirstLast = function(haystack, needle)
+      local first,last = string.find(haystack,needle,1,true)
+      if (first ~= nil and last ~= nil) then
+      else first = 0; last = 0 end
+      local msg = string.format("Search mask:[%s] on needle: [%s] Found start:[%d] end:[%d]",haystack,needle,first,last)
+      print(msg)
+      return first, last, #needle, msg
+    end
+
+    ---search haystack for needle and return several formatted objects of the first/last postions<br/>
+    ---results[1] = first..","..last<br/>
+    ---results[2] = {first,last}<br/>
+    ---results[3] = msg<br/>
+    ---@param haystack string - source to search
+    ---@param needle string - search teram
+    ---@return table results table of various forms of first/last
+    self.fetchDataPositionFirstLastFormats = function(haystack,needle)
+      local first, last, concat, msg
+      local results = {}
+      first,last, msg =  self.fetchDataPositionFirstLast(haystack,needle)
+      -- string contact
+      results[#results+1] = first..","..last
+      results[#results+1] = {first,last}
+      results[#results+1] = msg
+      return results
     end
 
     --- Replaces a needle in a haystack with passed data
@@ -1173,34 +1400,38 @@ end
 
 --[[ response parsing tests ]]--
 function ResponseParseTests()
-  local result, msg, status, haystack, needle, pointer, len
+  local result, msg, status, haystack, needle, pointer, len, response
   local results = {}
   local du = DataUtils:new()
   local reqModel = RequestModel:new()
+  haystack = "aaaabbbbccccdd"
+  pointer = 1
+  len = 4
+
+  response = reqModel.cleanSysexUniversalMessage(RequestsTable:new().HardwareConfigurationResponse)
+
+  reqModel.HardwareConfigurationResponseObject = reqModel.HardwareConfigurationResponseObject:new(response)
+
+  print("stop:")
+end
+
+ResponseParseTests()
 
 
 
 
-  print("stop:" .. result)
-  
+  -- reqModel.HardwareConfigurationDataContract = 
+  --   reqModel.BuildHardwareConfigurationDataContract(response)
 
-
-
-
-
-
-
+  -- result = reqModel.fetchDataPositionFirstLast(haystack,"aaaa")
+  -- result = reqModel.fetchDataPositionFirstLast(haystack,"bbbb")
+  -- result = reqModel.fetchDataPositionFirstLast(haystack,"cccc")
+  -- result = reqModel.fetchDataPositionFirstLast(haystack,"dd")
 
 
 -- HWConfigDump
 --   reqModel.HardwareConfigurationResponseData.getHardwareConfigResponseData(RequestsTable:new().HardwareConfigurationResponse)
 --   print(string.format("Instrument Count: [%s]",reqModel.HardwareConfigurationResponseData.simDataTableList[1].simInstrumentCount))
-
-
-end
-ResponseParseTests()
-
-
 
 --[[ fetchData functions
     haystack = "aaaabbbbccccdd"
