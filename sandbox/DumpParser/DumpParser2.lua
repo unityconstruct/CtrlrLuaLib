@@ -43,7 +43,6 @@ function RequestsTable:new(o)
     self.SetupDumpResponse             = "F0180F00551C1E00230010001500030020000900557365722053657475702020202020200001010000000000020000000100010000000100000002007F7F7F7F0000000000000E0000003E007F7F0100000005000100000000000000010001000200000000004A00470019001A0049004B005500480040004100420011001000010020014E004D001B001C00010003005200530001000000000000000000000000000100000001002800600000000A0014001E000100000003000000000000000000000000000100000000000A00000001000000010000000000000000000000000000007F000000030000000000000000007F7F1F0003017F0040007F7F0000010000000100000001007F0040007F7F0000010000000100000002007F0040007F7F0000010000000100000003007F0040007F7F0000010000000100000004007F0040007F7F0000010000000100000005007F0040007F7F0000010000000100000006007F0040007F7F0000010000000100000007007F0040007F7F0000010000000100000008007F0040007F7F0000010000000100000009007F0040007F7F000001000000010000000A007F0040007F7F000001000000010000000B007F0040007F7F000001000000010000000C007F0040007F7F000001000000010000000D007F0040007F7F000001000000010000000E007F0040007F7F000001000000010000000F007F0040007F7F0000010000000100000010007F0040007F7F0000010000000100000011007F0040007F7F0000010000000100000012007F0040007F7F0000010000000100000013007F0040007F7F0000010000000100000014007F0040007F7F0000010000000100000015007F0040007F7F0000010000000100000016007F0040007F7F0000010000000100000017007F0040007F7F0000010000000100000018007F0040007F7F0000010000000100000019007F0040007F7F000001000000010000001A007F0040007F7F000001000000010000001B007F0040007F7F000001000000010000001C007F0040007F7F000001000000010000001D007F0040007F7F000001000000010000001E007F0040007F7F000001000000010000001F007F0040007F7F00000100000001000000F7"
     self.SetupDumpResponseAck          = {}
 
-
     return self
 end
 
@@ -57,7 +56,7 @@ function DataUtils:new(o)
     --- runc a function in protected mode: essentially try/catch
     ---@param func function - function to invoke using pcall(FUNCITON,ARGS)
     ---@return boolean, string - . true/false result + status message Success/Fail
-        function self.tryCatchFunc(func, ...)
+    function self.tryCatchFunc(func, ...)
         local msg
         local isSuccess = false
         if ((#... == 0) == true) then -- NO arguments
@@ -86,7 +85,7 @@ function DataUtils:new(o)
     --- Ctrlr uses console() Lua lang uses print()
     --- Attempts print(), if error then try console()
     ---@param value any - string to output to call
-        function self.p(value)
+    function self.p(value)
         if (pcall(print, tostring(value))) then
         else
             pcall(console, tostring(value))
@@ -94,6 +93,7 @@ function DataUtils:new(o)
     end
 
     do -- string
+
         --- converts anything to a string
         --- @param value string
         --- @return string
@@ -375,7 +375,6 @@ function DataUtils:new(o)
             return self.hex2int(hex, 16)
         end
 
-
         --[[
 
             -- "%.#"
@@ -385,8 +384,6 @@ function DataUtils:new(o)
             -- %0#x: padds leading zeros to fill up # posistions
             -- %.#x:
         ]]--
-
-        
         
         ---format an integer to hex. Supports :sub() length argument
         ---@param value integer value to convert
@@ -422,7 +419,11 @@ function DataUtils:new(o)
             return hexString, msg
         end
 
-
+        ---format a value to 2byte hex
+        ---@param value number
+        ---@param length? integer
+        ---@return string hexString hex value
+        ---@return string msg status message
         function self.formatValueToHex256(value, length)
             length = length or -2
             local hexString
@@ -436,6 +437,15 @@ function DataUtils:new(o)
             return hexString, msg
         end
 
+
+
+        --[[ TODO: review all the hex conversions and consolidate. Some function names are incorrect ]]
+
+        ---format a number to 4 byte hex
+        ---@param value number to format
+        ---@param length integer? optional length formatter( default=-8)
+        ---@return string hexString formatted hex
+        ---@return string msg status message
         function self.formatValueToHex1024(value, length)
             length = length or -8
             local hexString
@@ -449,22 +459,33 @@ function DataUtils:new(o)
             return hexString, msg
         end
 
-        function self.Int2Hex128(valueInt128)
-            return string.format("%2.x", valueInt128)
-        end
+        -- function self.Int2Hex128(valueInt128)
+        --     return string.format("%2.x", valueInt128)
+        -- end
 
-        function self.Int2Hex2Byte(valueInt256)
+        ---format number to 2 byte hex value
+        ---@param valueInt256 number value to convert
+        ---@return string hexString value
+        function self.int2Hex2Byte(valueInt256)
             return string.format("%04x", valueInt256)
         end
 
-        function self.Int2Char(value)
+        ---Convert number to character
+        ---@param value integer value of a character
+        ---@return string character character of the number
+        function self.int2Char(value)
+            if(value == "nil") then return " " end
+            value = value
             return string.char(value)
         end
 
         --[[ Nibblize ]]
         --
-
-        function self.nibblize14bit(nibbleInt)
+        ---Nibblize an integer: converts to 2 byte hex with LSB first( '1' = '01 00' )
+        ---@param nibbleInt integer integer to convert
+        ---@return table nibbleTable a table with 'msb' and 'lsb' fields
+        ---@return string msg status message
+        function self.nibblize14bitToTable(nibbleInt)
             local nibbleTable = {}
             local msg = "Nibblize: value: " .. nibbleInt
             -- negative values need [2's complement]
@@ -482,7 +503,7 @@ function DataUtils:new(o)
         end
 
         function self.nibblize14bitToHexString(nibbleInt)
-            local nibbleTable = self.nibblize14bit(nibbleInt)
+            local nibbleTable = self.nibblize14bitToTable(nibbleInt)
             local hexstring = string.format("%s %s", self.formatValueToHex256(nibbleTable.lsb),
                 self.formatValueToHex256(nibbleTable.msb))
             local msg = string.format("Nibblized to Hexstring: Value:[%d] MSB:[%d] LSB:[%d] HexString:[%s]",
@@ -493,7 +514,7 @@ function DataUtils:new(o)
         --- nibblize a value into msb and lsb
         --- @param value integer to process
         --- @return table return table with msb,lsb
-        function self.Nibblize(value)
+        function self.nibblize(value)
             local nibble = {}
 
             -- negative values need [2's complement]
@@ -543,6 +564,9 @@ function DataUtils:new(o)
 
     do -- bin/dec
 
+        ---convert decimal to binary: ( '3' =  '00000011'  )
+        ---@param decNum integer
+        ---@return string binString
         function self.dec2bin(decNum)
             local t = {}
             local i
@@ -564,7 +588,7 @@ function DataUtils:new(o)
 
         ---convert a binary represented as string to decimal using base 2
         ---@param binNum string binary number represented as a string
-        ---@return integer .return converted decimal number
+        ---@return integer _ converted decimal number
         function self.bin2decInt(binNum)
             return bin2dec(binNum, 2)
         end
@@ -574,7 +598,7 @@ function DataUtils:new(o)
 
         --- convert boolean to string
         ---@param valueBoolean boolean boolean to parse
-        ---@return string . returns 0 if false, 1 if true
+        ---@return string _ returns 0 if false, 1 if true
         function self.boolToStr(valueBoolean)
             if valueBoolean == true then
                 return "1"
@@ -585,7 +609,7 @@ function DataUtils:new(o)
 
         ---convert string to boolean
         ---@param valueString string string to parse
-        ---@return boolean . returns true if 1/"true", false if 0/"false"
+        ---@return boolean _ returns true if 1/"true", false if 0/"false"
         function self.strToBool(valueString)
             if valueString == "1" or valueString == "true" then
                 return true
@@ -598,7 +622,7 @@ function DataUtils:new(o)
     do -- sysex utilities
         ---Detect if message is Sysex NonRealTime: [F0**F7]
         ---Starts with F0 | Ends with F7
-        ---@param msg string - message to parse
+        ---@param msg string message to parse
         ---@return boolean _ return true if starts with F0, ends with F7
         function self.isSysexNonRealtime(msg)
             local du = DataUtils:new()
@@ -613,7 +637,7 @@ function DataUtils:new(o)
 
         ---Detect if message is Sysex Universal: [F0180F0055**F7]
         ---Starts with F0180F0055 | Ends with F7
-        ---@param msg string - message to parse
+        ---@param msg string message to parse
         ---@return boolean _ return true if starts with F0, ends with F7
         function self.isSysexUniversal(msg)
             local du = DataUtils:new()
@@ -741,17 +765,26 @@ local MessageSpecs = {
         PresetDumpHeaderResponse = "1001",
         PresetDumpResponse = "1002pppp",
         SetupDumpResponse = "1C",
+    },
+    ---@
+    Status = {
+        START = "START",
+        RUNNING = "RUNNING",
+        STOP = "STOP",
+        DONE = "DONE",
+        IDLE = "IDLE",
+        ERROR = "ERROR",
+        WARN = "WARN",
+        WAIT = "WAIT",
+        FAIL = "FAIL",
+        SUCESS = "SUCCESS",
+        OK = "OK"
     }
 }
 ---tables holding sysex messaging specifications
 function MessageSpecs:new()
     setmetatable({}, self)
     self.__index = self
-
-
-
-
-
 
     do -- handshaking
         ---@type table
@@ -1018,7 +1051,7 @@ function MessageSpecs:new()
     end
 
     do -- Preset Common
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetCommonParamsDumpDataResponse = {}
         self.PresetCommonParamsDumpDataResponse[0] = { "1010[240]", "Mask" }
         self.PresetCommonParamsDumpDataResponse[1] = { "10", "Command" }
@@ -2500,9 +2533,8 @@ function MessageContracts:new()
         self.PresetDump[19904] = {1497,1498}
         self.PresetDump[19914] = {1499,1500}
         self.PresetDump[19924] = {1501,1502}
-
-        
     end
+
     return self
 end
 
@@ -2512,7 +2544,6 @@ local MessageObjects = {}
 function MessageObjects:new()
     setmetatable({}, self)
     self.__index = self
-    
 
     self.DeviceInquiryMessageObject = {}
     self.SetupDumpMessageObject = {}
@@ -2661,7 +2692,7 @@ function MessageParser:new()
     ---@return string status status message
     function self.presetDumpReceiverHandler(buffer, message)
         -- error checking
-        if(message == nil or #message == 0) then return buffer, "STOP" end
+        if(message == nil or #message == 0) then return buffer, MessageSpecs.Status.STOP end
 
         -- strip sysex control bytes from incomming message
         -- check if message is DumpHeader or Dump Segment & change length removed from start accordingly
@@ -2673,11 +2704,10 @@ function MessageParser:new()
         elseif (du.isStartsWithAtPosition(message, "1002",#MessageSpecs.Headers.BasicHeader+1,true)) then
             message = du.cleanSysexUniversalMessage(message, 
                 (#MessageSpecs.Headers.BasicHeader + #MessageSpecs.Headers.PresetDumpResponse))
-        -- EOX, DONE with transmission
-        elseif (du.isStartsWithAtPosition(
-            message,MessageSpecs.Handshake.EOF)
-        ) then
-
+        -- EOF, DONE with transmission
+        elseif (du.isEndsWith(message,(MessageSpecs.Handshake.EOF .. MessageSpecs.SysexUniversal_EOX))) then
+            -- do nothing, just return buffer. no ACK needed
+            return buffer, MessageSpecs.Status.DONE
         end
 
         -- add message to buffer stack
@@ -2686,7 +2716,7 @@ function MessageParser:new()
         buffer.sendACK(buffer.packetCounter)
         -- update packet count
         buffer.packetCounter = buffer.packetCounter + 1
-        return buffer, "OK"
+        return buffer, MessageSpecs.Status.DONE
     end
 
 
