@@ -97,7 +97,7 @@ function DataUtils:new(o)
         --- converts anything to a string
         --- @param value string
         --- @return string
-        function self.ToString(value)
+        function self.toString(value)
             return tostring(value)
         end
 
@@ -122,6 +122,23 @@ function DataUtils:new(o)
         function self.removeSpaces(string)
             local result = string.gsub(string, " ", "")
             return result
+        end
+
+        ---read a string into a byte table with 2 chars per element
+        ---@param str string input string, normally a hexString
+        ---@return table byteTable a table of elements containing 2 chars each
+        function self.stringToByteTable(str)
+            -- string length must be even to be valid hexString
+            if(#str%2 ~= 0) then return {} end -- return empty table
+
+            -- scrape response string to byte table with 2 chars per cell
+            local byteTable = {}
+            local pointer = 1
+            for i = 1, (#str / 2) do
+                byteTable[i] = string.sub(str, pointer, pointer + 1)
+                pointer = pointer + 2
+            end
+            return byteTable
         end
 
         --[[ string searching ]]
@@ -712,13 +729,19 @@ local MessageSpecs = {
     SysexUniversal_Prefix = "F0180F",
     SysexUniversal_SOX = "F0",
     SysexUniversal_EOX = "F7",
+    Handshake = {
+        ACK = "7F",
+        ACKClosedLoop = "7Fpppp",
+        NAK = "7Epppp",
+        CANCEL = "7D",
+        EOF = "7B",
+    },
     Headers = {
         BasicHeader = "F0180FXX55",
         PresetDumpHeaderResponse = "1001",
         PresetDumpResponse = "1002pppp",
         SetupDumpResponse = "1C",
     }
-
 }
 ---tables holding sysex messaging specifications
 function MessageSpecs:new()
@@ -2520,6 +2543,8 @@ function MessageBuffer:new(o)
   o = o or {}
   setmetatable({},self)
   self.__index = self
+  local du = DataUtils:new()
+
 
   ---Send Closed Loop ACK with packet counter
   ---@param counter? integer
@@ -2527,22 +2552,38 @@ function MessageBuffer:new(o)
   function self.sendACK(counter)
     -- if no counter provided try using the store one, else 0
     counter = counter or self.packetCounter or 0
-    local msg = self.msgSpecs.ACKClosedLoopwithPacketCounter[0][1]
-    local counterHex = tostring(self.du.removeSpaces(self.du.nibblize14bitToHexString(counter)))
-    msg = self.du.replaceDataUsingMask(msg,"aaaa",counterHex)
-    msg = self.du.replaceDataUsingMask(MessageSpecs.SysexWrapper,"XX",msg)
-
+    -- fetch ACK template
+    local msg = self.msgSpecs.Handshake.ACKClosedLoop
+    -- nibblize packet counter
+    local counterHex = tostring(du.removeSpaces(du.nibblize14bitToHexString(counter)))
+    -- inject nibblized packet counter into the ACK message 'pppp'
+    msg = du.replaceDataUsingMask(msg,"pppp",counterHex)
+    -- wrap message in sysex control bytes
+    msg = self.wrapWithSysexControlBytes(msg)
+    -- msg = du.replaceDataUsingMask(MessageSpecs.SysexWrapper,"XX",msg)
     return msg
   end
 
+  ---wrap a string in sysex control bytes
+  ---@param message any
+  ---@return string message string with sysex header and EOX control bytes
+  function self.wrapWithSysexControlBytes(message)
+    local status
+    -- wrap message in sysex control bytes
+    message, status = du.replaceDataUsingMask(MessageSpecs.SysexWrapper,"XX",message)
+    print(string.format("STATUS:[%s] MESSAGE:[%s]",status,message))
+    return message
+  end
+
+  -- TODO: add logic
   function self.isSysexNonRealtime() end
   function self.isSysexUniversal() end
   function self.isValueHexString() end
-  
 
   return self 
+  -- example instantiation
+  -- local messageBuffer = MessageBuffer:new()
 end
---local messageBuffer = MessageBuffer:new()
 
 
 local MessageParser = {}
@@ -2550,26 +2591,13 @@ local MessageParser = {}
 function MessageParser:new()
     setmetatable({}, self)
     self.__index = self
+    -- caches incoming messages/dumps
+    -- could be used to hold data so any changes made can be injected in-place without needing to rebuild message from scratch
     local InboundMessageBuffer = {}
-
+    -- caches outgoing messages/dumps
+    local OutboundMessageBuffer = {}
+    -- utility class instantiated for easy access
     local du = DataUtils:new()
-
-    ---read a string into a byte table with 2 chars per element
-    ---@param str string input string, normally a hexString
-    ---@return table byteTable a table of elements containing 2 chars each
-    function self.stringToByteTable(str)
-        -- string length must be even to be valid hexString
-        if(#str%2 ~= 0) then return {} end -- return empty table
-
-        -- scrape response string to byte table with 2 chars per cell
-        local byteTable = {}
-        local pointer = 1
-        for i = 1, (#str / 2) do
-            byteTable[i] = string.sub(str, pointer, pointer + 1)
-            pointer = pointer + 2
-        end
-        return byteTable
-    end
 
     ---parse response message to byteTable then create mapped object table from it using MessageContract
     ---@param response string response message
@@ -2599,16 +2627,16 @@ function MessageParser:new()
         return msgObj
     end
 
-
-        ---parse response message to byteTable then create mapped object table from it using MessageContract
+    ---parse response message to byteTable then create mapped object table from it using MessageContract
     ---@param response string response message
     ---@return table MessageObject table of mapped paramIds -> hex value(s)
     function self.presetDumpResponseParser(response)
         -- clean spaces and remove sysex universal control bytes
         local syxctl = "F0180F0055"
         response = du.cleanSysexUniversalMessage(du.removeSpaces(response), syxctl)
-        local byteTable = self.stringToByteTable(response)
+        local byteTable = du.stringToByteTable(response)
         -- use Message Contract to build MessageObject Table mapped {paramid,byte(s)}
+        -- same keys used in both tables
         local msgObj = {}
         for k, v in pairs(MessageContracts:new().PresetDump) do
             if (v[1] == v[2]) then
@@ -2635,24 +2663,30 @@ function MessageParser:new()
         -- error checking
         if(message == nil or #message == 0) then return buffer, "STOP" end
 
+        -- strip sysex control bytes from incomming message
+        -- check if message is DumpHeader or Dump Segment & change length removed from start accordingly
+        -- PresetDumpHeader
         if(du.isStartsWithAtPosition(message, "1001",#MessageSpecs.Headers.BasicHeader+1,true)) then
-            message = du.cleanSysexUniversalMessage(message, (#MessageSpecs.Headers.BasicHeader + #MessageSpecs.Headers.PresetDumpHeaderResponse))
+            message = du.cleanSysexUniversalMessage(message, 
+                (#MessageSpecs.Headers.BasicHeader + #MessageSpecs.Headers.PresetDumpHeaderResponse)) 
+        -- PresetDump Segment
         elseif (du.isStartsWithAtPosition(message, "1002",#MessageSpecs.Headers.BasicHeader+1,true)) then
-            message = du.cleanSysexUniversalMessage(message, (#MessageSpecs.Headers.BasicHeader + #MessageSpecs.Headers.PresetDumpResponse))
+            message = du.cleanSysexUniversalMessage(message, 
+                (#MessageSpecs.Headers.BasicHeader + #MessageSpecs.Headers.PresetDumpResponse))
+        -- EOX, DONE with transmission
+        elseif (du.isStartsWithAtPosition(
+            message,MessageSpecs.Handshake.EOF)
+        ) then
+
         end
 
-
-
+        -- add message to buffer stack
         buffer.messages[#buffer.messages+1] = message
+        -- send ack
         buffer.sendACK(buffer.packetCounter)
+        -- update packet count
         buffer.packetCounter = buffer.packetCounter + 1
         return buffer, "OK"
-    end
-
-    function self.cleanBufferSysex(buffer)
-        for i=1,#buffer.messages do
-            buffer.messages[i] = self.du.cleanSysexUniversalMessage(buffer.messages[i])
-        end
     end
 
 
@@ -2665,9 +2699,15 @@ function MessageParser:new()
         -- check for even message length
         local syxctl = "F0180Fid551002pppp" -- +4 for packet numbers
 
+
+
+
                                     --[[ PresetDumpHeader is 1st message in table ]]
         -- TODO add PresetHeaderResponse Handling
         local presetHeader = presetDumpTable[1]
+
+
+
 
         -- PresetDump starts at 2nd message in table
         local response = ""
@@ -2714,12 +2754,16 @@ local  responseTable = requestTables.PresetDumpResponse
 local setupDumpResponse = msgParser.presetDumpResponseHandler(responseTable)
 local byteTable2 = msgParser.presetDumpResponseParser(setupDumpResponse)
 
-local isError = false
+
+--[[ tests PresetDumpReceiver handles incomming messages and builds correct reponse message ( same as prefab static string) ]]
+local isSuccess = true
 for k,v in pairs(byteTable) do
     if(byteTable2[k] ~= byteTable[k]) then
-        isError = true
+        isSuccess = false
     end
 end
+
+print(string.format("Verifying byte tables match: SUCCESS:[%s]",tostring(isSuccess)))
 
 
 --[[ tests SetupDump 
