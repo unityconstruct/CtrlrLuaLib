@@ -4,10 +4,14 @@
 local SysexHandler = {}
 
 
+---@class RequestsTable helper class for storing adhoc request samples
 local RequestsTable = {}
+---instatiates a RequestsTable object
+---@param o any
+---@return RequestsTable
 function RequestsTable:new(o)
     o = o or {}
-    setmetatable({}, self)
+    setmetatable(o, self)
     self.__index                       = self
     -- identity request
     self.IdentityRequest               = "F07E000601F7"
@@ -47,10 +51,14 @@ function RequestsTable:new(o)
 end
 
 
+---@class DataUtils utilites for data conversion and acces
 local DataUtils = {}
+---instatiates a DataUtils object
+---@param o any
+---@return DataUtils
 function DataUtils:new(o)
     o = o or {}
-    setmetatable({}, self)
+    setmetatable(o, self)
     self.__index = self
 
     --- runc a function in protected mode: essentially try/catch
@@ -703,9 +711,6 @@ function DataUtils:new(o)
         ---@return string returnMsg updated string
         ---@return string status status message
         function self.cleanSysexUniversalMessage(msg, patternOrInteger)
-            setmetatable({},self)
-            self.__index = self
-
             local status, cleanedMsg
             local originalMsg = msg -- save original msg in the event error occurs
             -- if msg = nil, do nothing & return it
@@ -747,7 +752,8 @@ function DataUtils:new(o)
     return self
 end
 
----@type table
+---@
+---@class MessageSpecs
 local MessageSpecs = {
     SysexWrapper = "F0180F0055XXF7",
     SysexUniversal_Prefix = "F0180F",
@@ -766,7 +772,7 @@ local MessageSpecs = {
         PresetDumpResponse = "1002pppp",
         SetupDumpResponse = "1C",
     },
-    ---@
+    ---@enum
     Status = {
         START = "START",
         RUNNING = "RUNNING",
@@ -778,12 +784,69 @@ local MessageSpecs = {
         WAIT = "WAIT",
         FAIL = "FAIL",
         SUCESS = "SUCCESS",
-        OK = "OK"
+        OK = "OK",
+        TIMEOUT = "TIMEOUT"
+    },
+    Midi = { -- message masks for string replacement operations
+        --- Polyphonic Mesage [0xnc, 0xkk, 0xpp]
+        -- - c: channel | kk: key# | pp: pressure
+        -- - n is the status (0xA)
+        -- - c is the channel nybble
+        -- - kk is the key number (0 to 127)
+        -- - pp is the pressure value (0 to 127)
+        PolyPhonic = "A# kk pp",
+        --- Channel Aftertouch [0xnc, 0xpp]
+        -- - n is the status (0xD)
+        -- - c is the channel number
+        -- - pp is the pressure value (0 to 127)
+        ChannelAftertouch = "C# pp",
+        --- PitchBend [0xnc, 0xLL, 0xMM]
+        -- - n is the status (0xE)
+        -- - c is the channel number
+        -- - LL is the 7 least-significant bits of the value
+        -- - MM is the 7 most-significant bits of the value
+        PitchBend = "E# pp",
+        --- ControlChange [0xnc, 0xcc, 0xvv]
+        -- - n is the status (0xB)
+        -- - c is the MIDI channel
+        -- - cc is the controller number (0-127)
+        -- - vv is the controller value (0-127)
+        ControlChange = "B# cc vv",
+        --- ProgramChange [0xnc, 0xpp]
+        -- - n is the status (0xc)
+        -- - c is the channel
+        -- - pp is the patch number (0-127)
+        ProgramChange = "C# pp",
+        SystemMessages = {
+            --- TimeCodeQuarterFrame: Indicates timing using absolute time code, primarily for synthronization with video playback systems. A single location requires eight messages to send the location in an encoded hours:minutes:seconds:frames format*.
+            -- - 0xF1 | 1-byte
+            TimeCodeQuarterFrame = "",
+            ---SongPosition: Instructs a sequencer to jump to a new position in the song. The data bytes form a 14-bit value that expresses the location as the number of sixteenth notes from the start of the song.
+            -- - 0xF2 | 2-bytes
+            SongPosition = "",
+            ---SongSelect: Instructs a sequencer to select a new song. The data byte indicates the song.
+            -- - 0xF3 | 1-byte
+            SongSelect = "",
+            --- 0xF4 | 0-bytes
+            UndefinedF4 = "",
+            --- 0xF5 | 0-bytes
+            UndefinedF5 = "",
+            --- TuneRequest: Requests that the reciever retune itself**.
+            --- 0xF6 | 0-bytes
+            TuneRequest = ""
+
+        }
+
     }
+
+
 }
 ---tables holding sysex messaging specifications
-function MessageSpecs:new()
-    setmetatable({}, self)
+---@param o any
+---@return MessageSpecs
+function MessageSpecs:new(o)
+    o = o or {}
+    setmetatable(o, self)
     self.__index = self
 
     do -- handshaking
@@ -1328,10 +1391,14 @@ function MessageSpecs:new()
 end
 
 
+---@class MessageContracts
 local MessageContracts = {}
 ---tables holding positions of elements in sysex messages
-function MessageContracts:new()
-    setmetatable({}, self)
+---@param o any
+---@return MessageContracts
+function MessageContracts:new(o)
+    o = o or {}
+    setmetatable(o, self)
     self.__index = self
 
     self.du = DataUtils:new()
@@ -2538,11 +2605,15 @@ function MessageContracts:new()
     return self
 end
 
---@type
+
+---@class MessageObjects
 local MessageObjects = {}
 ---Table for holding Populated Sysex Messages
-function MessageObjects:new()
-    setmetatable({}, self)
+---@param o any
+---@return MessageObjects
+function MessageObjects:new(o)
+    o = o or {}
+    setmetatable(o, self)
     self.__index = self
 
     self.DeviceInquiryMessageObject = {}
@@ -2552,6 +2623,8 @@ function MessageObjects:new()
     return self
 end
 
+
+---@class MessageBuffer
 local MessageBuffer = {
     msgSpecs = MessageSpecs:new(),
     du = DataUtils:new(),
@@ -2566,13 +2639,12 @@ local MessageBuffer = {
     sendHandler = function() end,
 
 }
-
 ---Buffer object for midi communication mitigation
 ---@param o any
----@return table self 
+---@return MessageBuffer
 function MessageBuffer:new(o)
   o = o or {}
-  setmetatable({},self)
+  setmetatable(o,self)
   self.__index = self
   local du = DataUtils:new()
 
@@ -2617,47 +2689,19 @@ function MessageBuffer:new(o)
 end
 
 
-local MessageParser = {}
----Function library table for managing sysex messages
-function MessageParser:new()
-    setmetatable({}, self)
+---@class PresetDumpHander
+local PresetDumpHandler = {}
+--- Manages PresetDumps
+---@param o any
+---@return PresetDumpHander
+function PresetDumpHandler:new(o)
+    o = o or {}
+    setmetatable(o,self)
     self.__index = self
-    -- caches incoming messages/dumps
-    -- could be used to hold data so any changes made can be injected in-place without needing to rebuild message from scratch
-    local InboundMessageBuffer = {}
-    -- caches outgoing messages/dumps
-    local OutboundMessageBuffer = {}
-    -- utility class instantiated for easy access
     local du = DataUtils:new()
-
-    ---parse response message to byteTable then create mapped object table from it using MessageContract
-    ---@param response string response message
-    ---@return table MessageObject table of mapped paramIds -> hex value(s)
-    function self.setupDumpResponseParser(response)
-        -- clean spaces and remove sysex universal control bytes
-        local syxctl = "F0180F0055"
-        response = du.cleanSysexUniversalMessage(du.removeSpaces(response), syxctl)
-
-        -- scrape response string to byte table with 2 chars per cell
-        local byteTable = {}
-        local pointer = 1
-        for i = 1, (#response / 2) do
-            byteTable[i] = string.sub(response, pointer, pointer + 1)
-            pointer = pointer + 2
-        end
-
-        -- use Message Contract to build MessageObject Table mapped {paramid,byte(s)}
-        local msgObj = {}
-        for k, v in pairs(MessageContracts:new().SetupDump) do
-            if (v[1] == v[2]) then
-                msgObj[k] = string.format("%s", byteTable[v[1]])
-            else
-                msgObj[k] = string.format("%s%s", byteTable[v[1]], byteTable[v[2]])
-            end
-        end
-        return msgObj
-    end
-
+    
+    local PresetDumpBuffer = MessageBuffer:new()
+    
     ---parse response message to byteTable then create mapped object table from it using MessageContract
     ---@param response string response message
     ---@return table MessageObject table of mapped paramIds -> hex value(s)
@@ -2681,7 +2725,6 @@ function MessageParser:new()
         end
         return msgObj
     end
-
 
     ---Preset Dump Receiver that accumulates messages, extracts the handshake packet count and returns applicable ACKs
     ---once EOF reveived, save to buffer, clean sysex control bytes, and save to hexString(then to MemoryBlock)
@@ -2719,7 +2762,6 @@ function MessageParser:new()
         return buffer, MessageSpecs.Status.DONE
     end
 
-
     ---prepare the PresetDump messages for parsing
     ---@param presetDumpTable table table holding RAW preset sysex data
     ---@return string response
@@ -2755,6 +2797,110 @@ function MessageParser:new()
     function self.presetDumpBufferHandler()
     end
 
+  return self
+  -- local setupDumpHandler = SetupDumpHandler:new()
+end
+
+
+--- @class SetupDumpHandler manages SetupDumps
+local SetupDumpHandler = {}
+
+---instantiate a SetupDumpHandler object
+---@param o any
+---@return SetupDumpHandler SetupDumpHandler
+function SetupDumpHandler:new(o)
+    o = o or {}
+    setmetatable(o,self)
+    self.__index = self
+
+    local du = DataUtils:new()
+
+    local PresetDumpBuffer = MessageBuffer:new()
+
+    ---parse response message to byteTable then create mapped object table from it using MessageContract
+    ---@param response string response message
+    ---@return table MessageObject table of mapped paramIds -> hex value(s)
+    function self.setupDumpResponseParser(response)
+        -- clean spaces and remove sysex universal control bytes
+        local syxctl = "F0180F0055"
+        response = du.cleanSysexUniversalMessage(du.removeSpaces(response), syxctl)
+
+        -- scrape response string to byte table with 2 chars per cell
+        local byteTable = {}
+        local pointer = 1
+        for i = 1, (#response / 2) do
+            byteTable[i] = string.sub(response, pointer, pointer + 1)
+            pointer = pointer + 2
+        end
+
+        -- use Message Contract to build MessageObject Table mapped {paramid,byte(s)}
+        local msgObj = {}
+        for k, v in pairs(MessageContracts:new().SetupDump) do
+            if (v[1] == v[2]) then
+                msgObj[k] = string.format("%s", byteTable[v[1]])
+            else
+                msgObj[k] = string.format("%s%s", byteTable[v[1]], byteTable[v[2]])
+            end
+        end
+        return msgObj
+    end
+
+    return self
+    -- local setupDumpHandler = SetupDumpHandler:new()
+end
+
+
+---@class MessageHandler
+local MessageHandler = {}
+---Function library table for managing sysex messages
+---@param o any
+---@return MessageHandler
+function MessageHandler:new(o)
+    o = o or {}
+    setmetatable(o, self)
+    self.__index = self
+    -- caches incoming messages/dumps
+    -- could be used to hold data so any changes made can be injected in-place without needing to rebuild message from scratch
+    local InboundMessageBuffer = {}
+    -- caches outgoing messages/dumps
+    local OutboundMessageBuffer = {}
+    -- utility class instantiated for easy access
+    local du = DataUtils:new()
+
+    do -- Preset/ROM/Bank Handling
+
+        ---Send Program Change using CC0,CC32,0xC#(ProgChange)
+        -- - Values are nibblized LSB first
+        -- - b0 rr rr: ROMID
+        -- - b0 bb bb: Bank#
+        -- - c0 pp pp: ProgNumber
+        ---@param rom integer
+        ---@param bank integer
+        ---@param prog integer
+        ---@param ch integer 1-16
+        function self.sendProgramChange(rom,bank,prog,ch)
+            ch = ch or 0 -- default to channel 0
+            -- b0 00 0e CC0  - rom select
+            -- b0 20 00 CC32 - bank select
+            -- c0 70 00 PRG  - prog change
+        end
+
+        ---send ROMID select request
+        -- - Ex: [0102 0A01 0000 F7]
+        ---@param romid integer
+        function self.sendROMSelect(romid)
+            -- build message: 
+            -- ParameterSetRequest 0102
+            -- build ROMID hexString
+            local hexString = du.nibblize14bitToHexString(romid)
+        end
+
+        --- send PresetSelect for EditBuffer ( -1 )
+        -- - Ex: [0102 0107 7F7F F7]
+        function self.sendPresetEditBuffer()
+        end
+
+    end
 
     return self
 end
@@ -2764,25 +2910,26 @@ end
 --[[ tests MessageBuffer 
 ]]
 local requestTables = RequestsTable:new()
-local msgParser = MessageParser:new()
+local msgParser = MessageHandler:new()
 local buffer = MessageBuffer:new()
 local  responseTable = requestTables.PresetDumpResponse
+local presetDumpHander = PresetDumpHandler:new()
 
 -- iterate the PresetDumpResponse table, simulating midi rx/ack
 for i=1,8 do
-    buffer = msgParser.presetDumpReceiverHandler(buffer,responseTable[i])
+    buffer = presetDumpHander.presetDumpReceiverHandler(buffer,responseTable[i])
 end
-local responseString = msgParser.presetDumpResponseHandler(buffer.messages)
-local byteTable = msgParser.presetDumpResponseParser(responseString)
+local responseString = presetDumpHander.presetDumpResponseHandler(buffer.messages)
+local byteTable = presetDumpHander.presetDumpResponseParser(responseString)
 
 
 --[[ tests PresetDump
 ]]
 local requestTables = RequestsTable:new()
-local msgParser = MessageParser:new()
+-- local msgParser = MessageHandler:new()
 local  responseTable = requestTables.PresetDumpResponse
-local setupDumpResponse = msgParser.presetDumpResponseHandler(responseTable)
-local byteTable2 = msgParser.presetDumpResponseParser(setupDumpResponse)
+local setupDumpResponse = presetDumpHander.presetDumpResponseHandler(responseTable)
+local byteTable2 = presetDumpHander.presetDumpResponseParser(setupDumpResponse)
 
 
 --[[ tests PresetDumpReceiver handles incomming messages and builds correct reponse message ( same as prefab static string) ]]
