@@ -163,6 +163,25 @@ function DataUtils:new(o)
             end
         end
 
+                ---search a string for string value
+        ---@param haystack any - value to search in
+        ---@param needle any - value to search for
+        ---@param boolPlain any - true = use 'plain' text search, false = use 'pattern matching'
+        ---@return boolean - . return true if needle is found in haystack
+        function self.isStartsWithAtPosition(haystack, needle, startPos, boolPlain)
+            boolPlain = boolPlain or true
+            local starts = string.find(haystack, needle, startPos, boolPlain)
+            if (starts == nil) then
+                return false
+            else
+                if starts == startPos then
+                    return true
+                else
+                    return false
+                end
+            end
+        end
+
         ---check that haystack ends with needle
         ---@param haystack any - value to search in
         ---@param needle any - value to search for
@@ -296,54 +315,30 @@ function DataUtils:new(o)
             end
         end
 
-
-                --- Fetches a substring from HAYSTACK, using a MASK/NEEDLE as a lookup table<br/>
-        --searches MASK for NEED for START, END positions<br/>
-        --returns substring from HAYSTACK of START, END<br/>
-        --example: <br/>
-        --local requestSetParameter = {}<br/>
-        --requestSetParameter[0] = "0201aaaabbbb"<br/>
-        --requestSetParameter[1] = {"aaaa","paramname"}<br/>
-        --requestSetParameter[2] = {"bbbb","paramvalue"}<br/>
-        --request = setDataUsingMask(request,requestSetMultiModeRomId[1][1],"0A01")<br/>
-        --["0201aaaabbbb"] ==> ["02010A01bbbb"]<br/>
+        --- replaces data in a haystack by search for needle and replacing it with provided data<br/>
+        --   returns full haystack with or without replacement<br/>
         --- @param haystack string source to fetch data
-        -- - @param mask string indexing string searched for needle to get substring first/last positions in haystack
-        --- @param mask string search term for mask
+        --- @param needle string search term for mask
         --- @param data string data to insert in place of mask
+        --- @param isCheckLength? boolean if true, verify data and mask are same length
         --- @return string msg return the haystack with replaced values
         --- @return string status status message
-        function self.putDataUsingMask(haystack, mask,data)
+        function self.replaceDataUsingMask(haystack, needle,data,isCheckLength)
             -- error checking
-            -- if(#mask ~= #data) then return "ERORR", string.format("ERROR: data[%s][%d] size does not match mask[%s][%d] size",data,#data,mask,#mask) end
-
-            local result = string.gsub(haystack, mask, data)
+            isCheckLength = isCheckLength or false
+            if(isCheckLength) then
+                if(#needle ~= #data) then return "ERORR", string.format("ERROR: data[%s][%d] size does not match mask[%s][%d] size",data,#data,needle,#needle) end
+            end
+            -- replace need with data if found
+            local result = string.gsub(haystack, needle, data)
+            -- logging
             local msg = string.format(
                 "put data using mask on haystack:[%s] using mask:[%s] on needle: [%s] put data:[%s]\n result:[%s]",
-                haystack, mask, mask,data,result)
+                haystack, needle, needle,data,result)
             print(msg)
+
             return result, msg
-
-            -- local first, last = string.find(mask, needle, 1, true)
-            -- if (first ~= nil or last ~= nil) then
-                -- first = first or 1
-                -- local result = string.sub(haystack, first, last)
-                -- local msg = string.format(
-                --     "Search dump:[%s] using mask:[%s] on needle: [%s] Found start:[%d] end:[%d] result:[%s]", haystack,
-                --     mask,
-                    -- needle, first, last, result)
-                -- print(msg)
-                -- if (result == nil) then
-                --     return ""
-                -- else
-                --     return result
-                -- end
-            -- else
-            --     return haystack
-            -- end
         end
-
-
     end
 
     do -- hex formatting
@@ -661,12 +656,16 @@ function DataUtils:new(o)
             ]]
 
 
-
-        function self.cleanSysexUniversalMessage(msg, pattern)
+        ---Clean sysex control bytes from a message
+        ---@param msg string message to clean
+        ---@param patternOrInteger string|integer pattern to find and remove | number of chars to remove from start
+        ---@return string returnMsg updated string
+        ---@return string status status message
+        function self.cleanSysexUniversalMessage(msg, patternOrInteger)
             setmetatable({},self)
             self.__index = self
 
-            local status, returnMsg
+            local status, cleanedMsg
             local originalMsg = msg -- save original msg in the event error occurs
             -- if msg = nil, do nothing & return it
             if (msg == nil) then return originalMsg, "NOTHING TODO: msg=nil, nothing to do" end
@@ -677,30 +676,30 @@ function DataUtils:new(o)
 
             -- stip SysexUniversal control bytes
             if (isSysexUni == true) then -- PROCESS MESSAGE
-                local datatype = type(pattern)
+                local datatype = type(patternOrInteger)
                 if (datatype == "string") then
                     -- if pattern is text
-                    msg = string.sub(msg, #pattern + 1 --[[+1 position offset--]], #msg)
+                    msg = string.sub(msg, #patternOrInteger + 1 --[[+1 position offset--]], #msg)
                 elseif (datatype == "number") then
                     -- if pattern is number
-                    msg = string.sub(msg, pattern + 1 --[[+1 position offset--]], #msg)
+                    msg = string.sub(msg, patternOrInteger + 1 --[[+1 position offset--]], #msg)
                 end
 
                 msg = string.sub(msg, 1, #msg - 2)
                 -- check for something gone wrong
                 if (msg == nil) then -- FAIL: if result = nil, assign return message to the orginal
                     status = string.format("Cleaned Message FAILED: original:[%s]", originalMsg)
-                    returnMsg = originalMsg
+                    cleanedMsg = originalMsg
                 else -- SUCCESS: assign return msg the cleaned message
                     status = string.format("Cleaned Message: original:[%s] cleaned:[%s]", originalMsg, msg)
-                    returnMsg = msg
+                    cleanedMsg = msg
                 end
             else -- NOTHING TO DO: if not msg not SysexUniversal, assign return msg to the original
                 status = string.format("msg is not SysexUniversal, nothing to do: [%s]", originalMsg)
-                returnMsg = originalMsg
+                cleanedMsg = originalMsg
             end
 
-            return returnMsg, status
+            return cleanedMsg, status
         end
     end
 
@@ -712,14 +711,24 @@ local MessageSpecs = {
     SysexWrapper = "F0180F0055XXF7",
     SysexUniversal_Prefix = "F0180F",
     SysexUniversal_SOX = "F0",
-    SysexUniversal_EOX = "F7"
+    SysexUniversal_EOX = "F7",
+    Headers = {
+        BasicHeader = "F0180FXX55",
+        PresetDumpHeaderResponse = "1001",
+        PresetDumpResponse = "1002pppp",
+        SetupDumpResponse = "1C",
+    }
+
 }
 ---tables holding sysex messaging specifications
 function MessageSpecs:new()
     setmetatable({}, self)
     self.__index = self
 
-    
+
+
+
+
 
     do -- handshaking
         ---@type table
@@ -2520,8 +2529,8 @@ function MessageBuffer:new(o)
     counter = counter or self.packetCounter or 0
     local msg = self.msgSpecs.ACKClosedLoopwithPacketCounter[0][1]
     local counterHex = tostring(self.du.removeSpaces(self.du.nibblize14bitToHexString(counter)))
-    msg = self.du.putDataUsingMask(msg,"aaaa",counterHex)
-    msg = self.du.putDataUsingMask(MessageSpecs.SysexWrapper,"XX",msg)
+    msg = self.du.replaceDataUsingMask(msg,"aaaa",counterHex)
+    msg = self.du.replaceDataUsingMask(MessageSpecs.SysexWrapper,"XX",msg)
 
     return msg
   end
@@ -2598,11 +2607,7 @@ function MessageParser:new()
         -- clean spaces and remove sysex universal control bytes
         local syxctl = "F0180F0055"
         response = du.cleanSysexUniversalMessage(du.removeSpaces(response), syxctl)
-
-
         local byteTable = self.stringToByteTable(response)
-
-
         -- use Message Contract to build MessageObject Table mapped {paramid,byte(s)}
         local msgObj = {}
         for k, v in pairs(MessageContracts:new().PresetDump) do
@@ -2610,6 +2615,9 @@ function MessageParser:new()
                 msgObj[k] = string.format("%s", byteTable[v[1]])
             else
                 msgObj[k] = string.format("%s%s", byteTable[v[1]], byteTable[v[2]])
+            end
+            if (du.isContains(msgObj[k],"nil") ) then 
+                print(string.format("ERROR at k[%s] v[%s]",k,v))
             end
         end
         return msgObj
@@ -2619,16 +2627,32 @@ function MessageParser:new()
     ---Preset Dump Receiver that accumulates messages, extracts the handshake packet count and returns applicable ACKs
     ---once EOF reveived, save to buffer, clean sysex control bytes, and save to hexString(then to MemoryBlock)
     ---If error enountered, return 'STOP'
+    ---@param buffer any MessageBuffer object
     ---@param message string inbound midi message
-    ---@return string dump presetDump after aggregating & cleaning
-    function self.presetDumpReceiverHandler(message)
+    ---@return table dump presetDump after aggregating & cleaning
+    ---@return string status status message
+    function self.presetDumpReceiverHandler(buffer, message)
         -- error checking
-        if(message == nil or #message == 0) then return "STOP" end
-        -- 
-        
-        -- dump[#dump+1] = message
+        if(message == nil or #message == 0) then return buffer, "STOP" end
 
-        
+        if(du.isStartsWithAtPosition(message, "1001",#MessageSpecs.Headers.BasicHeader+1,true)) then
+            message = du.cleanSysexUniversalMessage(message, (#MessageSpecs.Headers.BasicHeader + #MessageSpecs.Headers.PresetDumpHeaderResponse))
+        elseif (du.isStartsWithAtPosition(message, "1002",#MessageSpecs.Headers.BasicHeader+1,true)) then
+            message = du.cleanSysexUniversalMessage(message, (#MessageSpecs.Headers.BasicHeader + #MessageSpecs.Headers.PresetDumpResponse))
+        end
+
+
+
+        buffer.messages[#buffer.messages+1] = message
+        buffer.sendACK(buffer.packetCounter)
+        buffer.packetCounter = buffer.packetCounter + 1
+        return buffer, "OK"
+    end
+
+    function self.cleanBufferSysex(buffer)
+        for i=1,#buffer.messages do
+            buffer.messages[i] = self.du.cleanSysexUniversalMessage(buffer.messages[i])
+        end
     end
 
 
@@ -2641,8 +2665,13 @@ function MessageParser:new()
         -- check for even message length
         local syxctl = "F0180Fid551002pppp" -- +4 for packet numbers
 
+                                    --[[ PresetDumpHeader is 1st message in table ]]
+        -- TODO add PresetHeaderResponse Handling
+        local presetHeader = presetDumpTable[1]
+
+        -- PresetDump starts at 2nd message in table
         local response = ""
-        for i=1,#presetDumpTable do
+        for i=2,#presetDumpTable do
             -- clean spaces and remove sysex universal control bytes
             response = response .. du.cleanSysexUniversalMessage(du.removeSpaces(presetDumpTable[i]), #syxctl)
             -- check message length is even, abort if not
@@ -2657,34 +2686,41 @@ function MessageParser:new()
     end
 
 
-
-
     return self
 end
 
 
 
---[[ tests MessageBuffer ]]
--- local requestTables = RequestsTable:new()
--- local msgParser = MessageParser:new()
-local messageBuffer = MessageBuffer:new()
-local result
-result = messageBuffer.sendACK(1)
-print(result)
-result = messageBuffer.sendACK()
-print(result)
-messageBuffer.packetCounter = 1
-result = messageBuffer.sendACK()
-print(result)
+--[[ tests MessageBuffer 
+]]
+local requestTables = RequestsTable:new()
+local msgParser = MessageParser:new()
+local buffer = MessageBuffer:new()
+local  responseTable = requestTables.PresetDumpResponse
+
+-- iterate the PresetDumpResponse table, simulating midi rx/ack
+for i=1,8 do
+    buffer = msgParser.presetDumpReceiverHandler(buffer,responseTable[i])
+end
+local responseString = msgParser.presetDumpResponseHandler(buffer.messages)
+local byteTable = msgParser.presetDumpResponseParser(responseString)
 
 
 --[[ tests PresetDump
+]]
 local requestTables = RequestsTable:new()
 local msgParser = MessageParser:new()
 local  responseTable = requestTables.PresetDumpResponse
 local setupDumpResponse = msgParser.presetDumpResponseHandler(responseTable)
-local byteTable = msgParser.presetDumpResponseParser(setupDumpResponse)
-]]
+local byteTable2 = msgParser.presetDumpResponseParser(setupDumpResponse)
+
+local isError = false
+for k,v in pairs(byteTable) do
+    if(byteTable2[k] ~= byteTable[k]) then
+        isError = true
+    end
+end
+
 
 --[[ tests SetupDump 
 local requestTables = RequestsTable:new()
