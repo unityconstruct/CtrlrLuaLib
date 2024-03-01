@@ -188,7 +188,7 @@ function DataUtils:new(o)
             end
         end
 
-                ---search a string for string value
+        ---search a string for string value
         ---@param haystack any - value to search in
         ---@param needle any - value to search for
         ---@param boolPlain any - true = use 'plain' text search, false = use 'pattern matching'
@@ -752,7 +752,6 @@ function DataUtils:new(o)
     return self
 end
 
----@
 ---@class MessageSpecs
 local MessageSpecs = {
     SysexWrapper = "F0180F0055XXF7",
@@ -837,9 +836,7 @@ local MessageSpecs = {
 
         }
 
-    }
-
-
+    },
 }
 ---tables holding sysex messaging specifications
 ---@param o any
@@ -860,38 +857,44 @@ function MessageSpecs:new(o)
         self.ACKClosedLoopwithPacketCounter[0] = { "7Faaaa", "Mask" }
         self.ACKClosedLoopwithPacketCounter[1] = { "7F", "Command" }
         self.ACKClosedLoopwithPacketCounter[2] = { "aaaa", "" }
-        ---@type table<table<string,string>>
+
+        ---@type table<integer, table<string,string>>
         self.NAK = {}
         self.NAK[0] = { "7Eaaaa", "Mask" }
         self.NAK[1] = { "7E", "Command" }
         self.NAK[2] = { "aaaa", "" }
-        ---@type table<table<string,string>>
+
+        ---@type table<integer, table<string,string>>
         self.CANCEL = {}
         self.CANCEL[0] = { "7D", "Mask" }
         self.CANCEL[1] = { "7D", "Command" }
-        ---@type table<table<string,string>>
+
+        ---@type table<integer, table<string,string>>
         self.WAIT = {}
         self.WAIT[0] = { "7C", "Mask" }
         self.WAIT[1] = { "7C", "Command" }
-        ---@type table<table<string,string>>
+
+        ---@type table<integer, table<string,string>>
         self.EOF = {}
         self.EOF[0] = { "7B", "Mask" }
         self.EOF[1] = { "7B", "Command" }
     end
 
     do -- sysex non-realtime
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.MasterVolume = {}
         self.MasterVolume[0] = { "7Eid0401aaaa", "Mask" }
         self.MasterVolume[1] = { "04", "Command" }
         self.MasterVolume[2] = { "01", "SubCommand" }
         self.MasterVolume[3] = { "aaaa", "volumelevel" }
-        ---@type table<table<string,string>>
+
+        ---@type table<integer, table<string,string>>
         self.DeviceInquiry = {}
         self.DeviceInquiry[0] = { "7Eid0601", "Mask" }
         self.DeviceInquiry[1] = { "06", "Command" }
         self.DeviceInquiry[2] = { "01", "SubCommand" }
-        ---@type table<table<string,string>>
+
+        ---@type table<integer, table<string,string>>
         self.DeviceInquiryResponse = {}
         self.DeviceInquiryResponse[0] = { "7Eid060218aaaabbbbcccccccc", "Mask" }
         self.DeviceInquiryResponse[1] = { "06", "Command" }
@@ -900,12 +903,13 @@ function MessageSpecs:new(o)
         self.DeviceInquiryResponse[4] = { "aaaa", "Device Family code" }
         self.DeviceInquiryResponse[5] = { "bbbb", "Device Family Member Code" }
         self.DeviceInquiryResponse[6] = { "cccccccc", "Software Revision Level (4 ASCII char)" }
+
         self.DeviceInquiryResponseData = {}
     end
 
     do -- Program Change
 
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.ProgramChangePresetMapDumpResponse = {}
         self.ProgramChangePresetMapDumpResponse[0] = { "16aa[256]bb[256]", "Mask" }
         self.ProgramChangePresetMapDumpResponse[1] = { "16", "Command" }
@@ -919,7 +923,7 @@ function MessageSpecs:new(o)
     end
 
     do -- parameter request/response
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.ParameterEditRequest = {}
         self.ParameterEditRequest[0] = { "0102aaaabbbb", "Mask" }
         self.ParameterEditRequest[1] = { "01", "Command" }
@@ -936,20 +940,20 @@ function MessageSpecs:new(o)
         ]]
         --
 
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.ParameterValueRequest = {}
         self.ParameterValueRequest[0] = { "0201aaaa", "Mask" }
         self.ParameterValueRequest[1] = { "02", "Command" }
         self.ParameterValueRequest[2] = { "01", "SubCommand" }
         self.ParameterValueRequest[3] = { "aaaa", "Parameter ID (LSB first)" }
 
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.ParamMinMaxDefaultValueRequest = {}
         self.ParamMinMaxDefaultValueRequest[0] = { "04aaaa", "Mask" }
         self.ParamMinMaxDefaultValueRequest[1] = { "04", "Command" }
         self.ParamMinMaxDefaultValueRequest[2] = { "aaaa", "Parameter ID" }
 
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.ParamMinMaxDefaultValueResponse = {}
         self.ParamMinMaxDefaultValueResponse[0] = { "03aaaabbbbccccddddee", "Mask" }
         self.ParamMinMaxDefaultValueResponse[1] = { "03", "Command" }
@@ -962,12 +966,12 @@ function MessageSpecs:new(o)
     end
 
     do -- Hardware Configuration
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.HardwareConfigurationRequest = {}
         self.HardwareConfigurationRequest[0] = { "0A", "Mask" }
         self.HardwareConfigurationRequest[1] = { "0A", "Command" }
 
-        ---@type table <table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.HardwareConfigurationResponse = {}
         self.HardwareConfigurationResponse[0] = { "09aabbbbccddeeeeffffgggg", "Mask" }
         self.HardwareConfigurationResponse[1] = { "09", "Command" }
@@ -985,7 +989,7 @@ function MessageSpecs:new(o)
 
     do -- Setup Dump
 
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.SetupDumpResponse = {}
         self.SetupDumpResponse[0] = { "1Caaaabbbbccccddddeeeeffffgggg[736]F7[1622443240657", "Mask" }
         self.SetupDumpResponse[1] = { "1C", "Command" }
@@ -1004,19 +1008,19 @@ function MessageSpecs:new(o)
         self.SetupDumpResponse[14] = { "[40]", "Reserved" }
         self.SetupDumpResponse[15] = { "[6]", "Non Channel Parameter Values" }
         self.SetupDumpResponse[16] = { "[576]", "Channel Parameters" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.SetupDumpRequest = {}
         self.SetupDumpRequest[0] = { "1D", "Mask" }
         self.SetupDumpRequest[1] = { "1D", "Command" }
         -- Generic Dump
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.GenericDumpRequest = {}
         self.GenericDumpRequest[0] = { "61000100aaaabbbb", "Mask" }
         self.GenericDumpRequest[1] = { "6100", "command::genericdump" }
         self.GenericDumpRequest[2] = { "0100", "objecttype01=masterdata" }
         self.GenericDumpRequest[3] = { "aaaa", "objectnumber(zeroformastersetupdata)" }
         self.GenericDumpRequest[4] = { "bbbb", "romnumber(zeroformastersetupdata)" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.GenericDump = {}
         self.GenericDump[0] = { "61aabbccddddeeeeffff[gggghhhhiiiijjjjkkkk]", "Mask" }
         self.GenericDump[1] = { "61", "Command" }
@@ -1037,7 +1041,7 @@ function MessageSpecs:new(o)
     end
 
     do -- Generic Dump
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.GenericName = {}
         self.GenericName[0] = { "0BaabbbbccccAAAAAAAAAAAAAAAA", "Mask" }
         self.GenericName[1] = { "0B", "Command" }
@@ -1045,7 +1049,7 @@ function MessageSpecs:new(o)
         self.GenericName[3] = { "bbbb", "Object Number" }
         self.GenericName[4] = { "cccc", "Object ROM ID" }
         self.GenericName[5] = { "aaaaaaaaaaaaaaaa", "Name ( x16 ASCII Chars )" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.GenericNameRequest = {}
         self.GenericNameRequest[0] = { "0Caabbbbcccc", "Mask" }
         self.GenericNameRequest[1] = { "0C", "Command" }
@@ -1055,7 +1059,7 @@ function MessageSpecs:new(o)
     end
 
     do -- Preset Dump ClosedLoop
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetDumpHeaderClosedLoopResponse = {}
         self.PresetDumpHeaderClosedLoopResponse[0] = { "1001aaaabbbbbbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmm",
             "Mask" }
@@ -1074,7 +1078,7 @@ function MessageSpecs:new(o)
         self.PresetDumpHeaderClosedLoopResponse[13] = { "kkkk", "Number of Preset Layer Envelope Parameters, LSB first." }
         self.PresetDumpHeaderClosedLoopResponse[14] = { "llll", "Number of Preset Layer PatchCord Parameters, LSB first." }
         self.PresetDumpHeaderClosedLoopResponse[15] = { "mmmm", "Preset ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetDumpDataClosedLoopResponse = {}
         self.PresetDumpDataClosedLoopResponse[0] = { "1002aaaa[244]ck", "Mask" }
         self.PresetDumpDataClosedLoopResponse[1] = { "10", "Command" }
@@ -1085,7 +1089,7 @@ function MessageSpecs:new(o)
     end
 
     do -- Preset Dump Open Loop
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetDumpHeaderOpenLoopResponse = {}
         self.PresetDumpHeaderOpenLoopResponse[0] = { "1003aaaabbbbbbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmm",
             "Mask" }
@@ -1104,7 +1108,7 @@ function MessageSpecs:new(o)
         self.PresetDumpHeaderOpenLoopResponse[13] = { "kkkk", "Number of Preset Layer Envelope Parameters, LSB first." }
         self.PresetDumpHeaderOpenLoopResponse[14] = { "llll", "Number of Preset Layer PatchCord Parameters, LSB first." }
         self.PresetDumpHeaderOpenLoopResponse[15] = { "mmmm", "Preset ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetDumpDataOpenLoopResponse = {}
         self.PresetDumpDataOpenLoopResponse[0] = { "1004aabb[244]ck", "Mask" }
         self.PresetDumpDataOpenLoopResponse[1] = { "10", "Command" }
@@ -1120,25 +1124,25 @@ function MessageSpecs:new(o)
         self.PresetCommonParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetCommonParamsDumpDataResponse[2] = { "10", "SubCommand" }
         self.PresetCommonParamsDumpDataResponse[3] = { "[240]", "" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetCommonGeneralParamsDumpDataResponse = {}
         self.PresetCommonGeneralParamsDumpDataResponse[0] = { "1011[126]", "Mask" }
         self.PresetCommonGeneralParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetCommonGeneralParamsDumpDataResponse[2] = { "11", "SubCommand" }
         self.PresetCommonGeneralParamsDumpDataResponse[3] = { "[126]", "" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetCommonArpParamsDumpDataResponse = {}
         self.PresetCommonArpParamsDumpDataResponse[0] = { "1012[38]", "Mask" }
         self.PresetCommonArpParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetCommonArpParamsDumpDataResponse[2] = { "12", "SubCommand" }
         self.PresetCommonArpParamsDumpDataResponse[3] = { "[38]", "" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetCommonEffectsParamsDumpDataResponse = {}
         self.PresetCommonEffectsParamsDumpDataResponse[0] = { "1013[38]", "Mask" }
         self.PresetCommonEffectsParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetCommonEffectsParamsDumpDataResponse[2] = { "13", "SubCommand" }
         self.PresetCommonEffectsParamsDumpDataResponse[3] = { "[38]", "" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetCommonLinkParamsDumpDataResponse = {}
         self.PresetCommonLinkParamsDumpDataResponse[0] = { "1014[46]", "Mask" }
         self.PresetCommonLinkParamsDumpDataResponse[1] = { "10", "Command" }
@@ -1147,37 +1151,37 @@ function MessageSpecs:new(o)
     end
     
     do -- Preset Layer
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetLayerParamsDumpDataResponse = {}
         self.PresetLayerParamsDumpDataResponse[0] = { "1020[332]", "Mask" }
         self.PresetLayerParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetLayerParamsDumpDataResponse[2] = { "20", "SubCommand" }
         self.PresetLayerParamsDumpDataResponse[3] = { "[332]", "" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetLayerGeneralParamsDumpDataResponse = {}
         self.PresetLayerGeneralParamsDumpDataResponse[0] = { "1021[70]", "Mask" }
         self.PresetLayerGeneralParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetLayerGeneralParamsDumpDataResponse[2] = { "21", "SubCommand" }
         self.PresetLayerGeneralParamsDumpDataResponse[3] = { "[70]", "" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetLayerFilterParamsDumpDataResponse = {}
         self.PresetLayerFilterParamsDumpDataResponse[0] = { "1022[14]", "Mask" }
         self.PresetLayerFilterParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetLayerFilterParamsDumpDataResponse[2] = { "22", "SubCommand" }
         self.PresetLayerFilterParamsDumpDataResponse[3] = { "[14]", "" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetLayerLFOParamsDumpDataResponse = {}
         self.PresetLayerLFOParamsDumpDataResponse[0] = { "1023[28]", "Mask" }
         self.PresetLayerLFOParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetLayerLFOParamsDumpDataResponse[2] = { "23", "SubCommand" }
         self.PresetLayerLFOParamsDumpDataResponse[3] = { "[28]", "" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetLayerEnvelopeParamsDumpDataResponse = {}
         self.PresetLayerEnvelopeParamsDumpDataResponse[0] = { "1024[92]", "Mask" }
         self.PresetLayerEnvelopeParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetLayerEnvelopeParamsDumpDataResponse[2] = { "24", "SubCommand" }
         self.PresetLayerEnvelopeParamsDumpDataResponse[3] = { "[92]", "" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetLayerPatchcordParamsDumpDataResponse = {}
         self.PresetLayerPatchcordParamsDumpDataResponse[0] = { "1025[152]", "Mask" }
         self.PresetLayerPatchcordParamsDumpDataResponse[1] = { "10", "Command" }
@@ -1186,56 +1190,56 @@ function MessageSpecs:new(o)
     end
 
     do -- Preset Dump Request
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetDumpRequestClosedLoop = {}
         self.PresetDumpRequestClosedLoop[0] = { "1102aaaabbbb", "Mask" }
         self.PresetDumpRequestClosedLoop[1] = { "11", "Command" }
         self.PresetDumpRequestClosedLoop[2] = { "02", "SubCommand" }
         self.PresetDumpRequestClosedLoop[3] = { "aaaa", "Preset Number" }
         self.PresetDumpRequestClosedLoop[4] = { "bbbb", "Preset ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetDumpRequestOpenLoop = {}
         self.PresetDumpRequestOpenLoop[0] = { "1104aaaabbbb", "Mask" }
         self.PresetDumpRequestOpenLoop[1] = { "11", "Command" }
         self.PresetDumpRequestOpenLoop[2] = { "04", "SubCommand" }
         self.PresetDumpRequestOpenLoop[3] = { "aaaa", "Preset Number" }
         self.PresetDumpRequestOpenLoop[4] = { "bbbb", "Preset ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetCommonParamsDumpRequest = {}
         self.PresetCommonParamsDumpRequest[0] = { "1110aaaabbbb", "Mask" }
         self.PresetCommonParamsDumpRequest[1] = { "11", "Command" }
         self.PresetCommonParamsDumpRequest[2] = { "10", "SubCommand" }
         self.PresetCommonParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetCommonParamsDumpRequest[4] = { "bbbb", "Preset ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetCommonGeneralParamsDumpRequest = {}
         self.PresetCommonGeneralParamsDumpRequest[0] = { "1111aaaabbbb", "Mask" }
         self.PresetCommonGeneralParamsDumpRequest[1] = { "11", "Command" }
         self.PresetCommonGeneralParamsDumpRequest[2] = { "11", "SubCommand" }
         self.PresetCommonGeneralParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetCommonGeneralParamsDumpRequest[4] = { "bbbb", "Preset ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetCommonArpParamsDumpRequest = {}
         self.PresetCommonArpParamsDumpRequest[0] = { "1112aaaabbbb", "Mask" }
         self.PresetCommonArpParamsDumpRequest[1] = { "11", "Command" }
         self.PresetCommonArpParamsDumpRequest[2] = { "12", "SubCommand" }
         self.PresetCommonArpParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetCommonArpParamsDumpRequest[4] = { "bbbb", "Preset ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetCommonFXParamsDumpRequest = {}
         self.PresetCommonFXParamsDumpRequest[0] = { "1113aaaabbbb", "Mask" }
         self.PresetCommonFXParamsDumpRequest[1] = { "11", "Command" }
         self.PresetCommonFXParamsDumpRequest[2] = { "13", "SubCommand" }
         self.PresetCommonFXParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetCommonFXParamsDumpRequest[4] = { "bbbb", "Preset ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetCommonLinkParamsDumpRequest = {}
         self.PresetCommonLinkParamsDumpRequest[0] = { "1114aaaabbbb", "Mask" }
         self.PresetCommonLinkParamsDumpRequest[1] = { "11", "Command" }
         self.PresetCommonLinkParamsDumpRequest[2] = { "14", "SubCommand" }
         self.PresetCommonLinkParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetCommonLinkParamsDumpRequest[4] = { "bbbb", "Preset ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetLayerParamsDumpRequest = {}
         self.PresetLayerParamsDumpRequest[0] = { "1120aaaabbbbcccc", "Mask" }
         self.PresetLayerParamsDumpRequest[1] = { "11", "Command" }
@@ -1243,7 +1247,7 @@ function MessageSpecs:new(o)
         self.PresetLayerParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetLayerParamsDumpRequest[4] = { "bbbb", "Layer Number" }
         self.PresetLayerParamsDumpRequest[5] = { "cccc", "Preset ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetLayerGeneralParamsDumpRequest = {}
         self.PresetLayerGeneralParamsDumpRequest[0] = { "1121aaaabbbbcccc", "Mask" }
         self.PresetLayerGeneralParamsDumpRequest[1] = { "11", "Command" }
@@ -1251,7 +1255,7 @@ function MessageSpecs:new(o)
         self.PresetLayerGeneralParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetLayerGeneralParamsDumpRequest[4] = { "bbbb", "Layer Number" }
         self.PresetLayerGeneralParamsDumpRequest[5] = { "cccc", "Preset ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetLayerFilterParamsDumpRequest = {}
         self.PresetLayerFilterParamsDumpRequest[0] = { "1122aaaabbbbcccc", "Mask" }
         self.PresetLayerFilterParamsDumpRequest[1] = { "11", "Command" }
@@ -1259,7 +1263,7 @@ function MessageSpecs:new(o)
         self.PresetLayerFilterParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetLayerFilterParamsDumpRequest[4] = { "bbbb", "Layer Number" }
         self.PresetLayerFilterParamsDumpRequest[5] = { "cccc", "Preset ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetLayerLFOParamsDumpRequest = {}
         self.PresetLayerLFOParamsDumpRequest[0] = { "1123aaaabbbbcccc", "Mask" }
         self.PresetLayerLFOParamsDumpRequest[1] = { "11", "Command" }
@@ -1267,7 +1271,7 @@ function MessageSpecs:new(o)
         self.PresetLayerLFOParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetLayerLFOParamsDumpRequest[4] = { "bbbb", "Layer Number" }
         self.PresetLayerLFOParamsDumpRequest[5] = { "cccc", "Preset ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetLayerEnvelopeParamsDumpRequest = {}
         self.PresetLayerEnvelopeParamsDumpRequest[0] = { "1124aaaabbbbcccc", "Mask" }
         self.PresetLayerEnvelopeParamsDumpRequest[1] = { "11", "Command" }
@@ -1275,7 +1279,7 @@ function MessageSpecs:new(o)
         self.PresetLayerEnvelopeParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetLayerEnvelopeParamsDumpRequest[4] = { "bbbb", "Layer Number" }
         self.PresetLayerEnvelopeParamsDumpRequest[5] = { "cccc", "Preset ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.PresetLayerCordParamsDumpRequest = {}
         self.PresetLayerCordParamsDumpRequest[0] = { "1125aaaabbbbcccc", "Mask" }
         self.PresetLayerCordParamsDumpRequest[1] = { "11", "Command" }
@@ -1286,7 +1290,7 @@ function MessageSpecs:new(o)
     end
 
     do -- arpeggiator
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.ArpeggiatorPatternDumpResponse = {}
         self.ArpeggiatorPatternDumpResponse[0] = { "18aaaabbbbccccddddAAAAAAAAAAAA[256]", "Mask" }
         self.ArpeggiatorPatternDumpResponse[1] = { "18", "Command" }
@@ -1296,18 +1300,18 @@ function MessageSpecs:new(o)
         self.ArpeggiatorPatternDumpResponse[5] = { "dddd", "Arpeggiator Pattern Loop Point (LSB first)" }
         self.ArpeggiatorPatternDumpResponse[6] = { "AAAAAAAAAAAA", "12 ASCII Character Pattern Name" }
         self.ArpeggiatorPatternDumpResponse[7] = { "[256]", "DATA" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.ArpeggiatorPatternDumpRequest = {}
         self.ArpeggiatorPatternDumpRequest[0] = { "19aaaabbbb", "Mask" }
         self.ArpeggiatorPatternDumpRequest[1] = { "19", "Command" }
         self.ArpeggiatorPatternDumpRequest[2] = { "aaaa", "Arpeggiator Pattern Number (LSB first)" }
         self.ArpeggiatorPatternDumpRequest[3] = { "bbbb", "Arpeggiator Pattern ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.LCDScreenDumpResponseP2KAudity2K = {}
     end
 
     do -- LCD
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.LCDScreenDumpResponseP2KAudity2K[0] = { "1A01aabbccMAP[48]", "Mask" }
         self.LCDScreenDumpResponseP2KAudity2K[1] = { "1A", "Command" }
         self.LCDScreenDumpResponseP2KAudity2K[2] = { "01", "SubCommand" }
@@ -1315,12 +1319,12 @@ function MessageSpecs:new(o)
         self.LCDScreenDumpResponseP2KAudity2K[4] = { "bb", "Number of Characters per Row (24)" }
         self.LCDScreenDumpResponseP2KAudity2K[5] = { "cc", "Number of Custom Characters per Screen (8)" }
         self.LCDScreenDumpResponseP2KAudity2K[6] = { "MAP[48]", "" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.LCDScreenDumpRequestP2KAudity2K = {}
         self.LCDScreenDumpRequestP2KAudity2K[0] = { "1B01", "Mask" }
         self.LCDScreenDumpRequestP2KAudity2K[1] = { "1B", "Command" }
         self.LCDScreenDumpRequestP2KAudity2K[2] = { "01", "SubCommand" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.LCDScreenCharacterPalletResponse = {}
         self.LCDScreenCharacterPalletResponse[0] = { "1A02aabb[MAPS]", "Mask" }
         self.LCDScreenCharacterPalletResponse[1] = { "1A", "Command" }
@@ -1328,7 +1332,7 @@ function MessageSpecs:new(o)
         self.LCDScreenCharacterPalletResponse[3] = { "aa", "Number of total Custom Characters in the Palette" }
         self.LCDScreenCharacterPalletResponse[4] = { "bb", "8 x Number of Custom Characters(13)=104 Bytes" }
         self.LCDScreenCharacterPalletResponse[5] = { "[MAPS]", "" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.LCDScreenCharacterPalletRequest = {}
         self.LCDScreenCharacterPalletRequest[0] = { "1B02", "Mask" }
         self.LCDScreenCharacterPalletRequest[1] = { "1B", "Command" }
@@ -1336,7 +1340,7 @@ function MessageSpecs:new(o)
     end
 
     do -- copy/paste objects
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.CopyPresetRequest = {}
         self.CopyPresetRequest[0] = { "20aaaabbbbcccc", "Mask" }
         self.CopyPresetRequest[1] = { "20", "Command" }
@@ -1344,45 +1348,45 @@ function MessageSpecs:new(o)
         self.CopyPresetRequest[3] = { "bbbb",
             "Destination Preset number (RAM only) LSB firstPreset Number of -1 bis the Edit Buffer." }
         self.CopyPresetRequest[4] = { "cccc", "Source ROM ID" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.CopyPresetCommonParametersRequest = {}
         self.CopyPresetCommonParametersRequest[0] = { "21aaaabbbbcccc", "Mask" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.CopyArpParametersRequest = {}
         self.CopyArpParametersRequest[0] = { "22aaaabbbbcccc", "Mask" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.CopyEffectsParametersRequestMasterorPreset = {}
         self.CopyEffectsParametersRequestMasterorPreset[0] = { "23aaaabbbbcccc", "Mask" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.CopyPresetLinkParametersRequest = {}
         self.CopyPresetLinkParametersRequest[0] = { "24aaaabbbbcccc", "Mask" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.CopyPresetLayerRequest = {}
         self.CopyPresetLayerRequest[0] = { "25aaaabbbbcccc", "Mask" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.CopyPresetLayerCommonParametersRequest = {}
         self.CopyPresetLayerCommonParametersRequest[0] = { "26aaaabbbbcccc", "Mask" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.CopyPresetLayerFilterParametersRequest = {}
         self.CopyPresetLayerFilterParametersRequest[0] = { "27aaaabbbbcccc", "Mask" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.CopyPresetLayerLFOParametersRequest = {}
         self.CopyPresetLayerLFOParametersRequest[0] = { "28aaaabbbbcccc", "Mask" }
         self.CopyPresetLayerEnvelopeParametersRequest = {}
         self.CopyPresetLayerEnvelopeParametersRequest[0] = { "29aaaabbbbcccc", "Mask" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.CopyPresetLayerPatchCordsRequest = {}
         self.CopyPresetLayerPatchCordsRequest[0] = { "2Aaaaabbbbcccc", "Mask" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.CopyArpPatternRequest = {}
         self.CopyArpPatternRequest[0] = { "2Baaaabbbbcccc", "Mask" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.CopyMasterSetupRequest = {}
         self.CopyMasterSetupRequest[0] = { "2Caaaabbbb", "Mask" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.CopyPatternRequest = {}
         self.CopyPatternRequest[0] = { "2Daaaabbbbcccc", "Mask" }
-        ---@type table<table<string,string>>
+        ---@type table<integer, table<string,string>>
         self.CopySongRequest = {}
         self.CopySongRequest[0] = { "2Eaaaabbbbcccc", "Mask" }
     end
@@ -1417,7 +1421,7 @@ function MessageContracts:new(o)
     }
 
     do -- Setup Dump By Position
-        ---@type table<table<integer,integer>>
+        ---@type table<integer, table<integer,integer>>
         self.SetupDump = {}
         self.SetupDump[0] = { 1, 1 }
         self.SetupDump[2] = { 2, 3 }
@@ -1838,8 +1842,44 @@ function MessageContracts:new(o)
         self.SetupDump[138] = { 816, 817 }
     end
 
+    do -- Preset Dump Header By Position
+
+        ---Preset Dump Header By Position Contract
+        -- - 10:  Command
+        -- - 01:  SubCommand
+        -- - Mask: [1001aaaabbbbbbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmm]
+        ---@type table<integer, table<integer,integer>>
+        self.PresetDumpHeader = {}
+        -- self.PresetDumpHeader[1] ={1,4}      -- "aaaa", "Preset Number
+        -- self.PresetDumpHeader[2] = {5,12}    -- "bbbbbbbb", "Number of DataBytes in Bump
+        -- self.PresetDumpHeader[3] = {13,16}   -- "cccc", "Number of Preset Common General Parameters, LSB first
+        -- self.PresetDumpHeader[4] = {17,20}   -- "dddd", "Number of Reserved Parameters, LSB first.
+        -- self.PresetDumpHeader[5] = {21,24}   -- "eeee", "Number of Preset Common Effects Parameters, LSB first.
+        -- self.PresetDumpHeader[6] = {25,28}   -- "ffff", "Number of Preset Common Link Parameters, LSB first.
+        -- self.PresetDumpHeader[7] = {29,32}   -- "gggg", "Number of Preset Layers, LSB first.
+        -- self.PresetDumpHeader[8] = {33,36}   -- "hhhh", "Number of Preset Layer General Parameters, LSB first.
+        -- self.PresetDumpHeader[9] = {37,40}   -- "iiii", "Number of Preset Layer Filter Parameters, LSB first.
+        -- self.PresetDumpHeader[10] = {41,44}  -- "jjjj", "Number of Preset Layer LFO Parameters, LSB first.
+        -- self.PresetDumpHeader[11] = {45,48}  -- "kkkk", "Number of Preset Layer Envelope Parameters, LSB first.
+        -- self.PresetDumpHeader[12] = {49,52}  -- "llll", "Number of Preset Layer PatchCord Parameters, LSB first.
+        -- self.PresetDumpHeader[13] = {53,56}  -- "mmmm", "Preset ROM ID
+        self.PresetDumpHeader["aaaa"] ={1,2}      -- "aaaa", "Preset Number
+        self.PresetDumpHeader["bbbbbbbb"] = {3,6}    -- "bbbbbbbb", "Number of DataBytes in Bump
+        self.PresetDumpHeader["cccc"] = {7,8}   -- "cccc", "Number of Preset Common General Parameters, LSB first
+        self.PresetDumpHeader["dddd"] = {9,10}   -- "dddd", "Number of Reserved Parameters, LSB first.
+        self.PresetDumpHeader["eeee"] = {11,12}   -- "eeee", "Number of Preset Common Effects Parameters, LSB first.
+        self.PresetDumpHeader["ffff"] = {13,14}   -- "ffff", "Number of Preset Common Link Parameters, LSB first.
+        self.PresetDumpHeader["gggg"] = {15,16}   -- "gggg", "Number of Preset Layers, LSB first.
+        self.PresetDumpHeader["hhhh"] = {17,18}   -- "hhhh", "Number of Preset Layer General Parameters, LSB first.
+        self.PresetDumpHeader["iiii"] = {19,20}   -- "iiii", "Number of Preset Layer Filter Parameters, LSB first.
+        self.PresetDumpHeader["jjjj"] = {21,22}  -- "jjjj", "Number of Preset Layer LFO Parameters, LSB first.
+        self.PresetDumpHeader["kkkk"] = {23,24}  -- "kkkk", "Number of Preset Layer Envelope Parameters, LSB first.
+        self.PresetDumpHeader["llll"] = {25,26}  -- "llll", "Number of Preset Layer PatchCord Parameters, LSB first.
+        self.PresetDumpHeader["mmmm"] = {27,28}  -- "mmmm", "Preset ROM ID
+    end
 
     do -- Preset Dump By Position
+        ---@type table<integer, table<integer,integer>>
         self.PresetDump = {}
         self.PresetDump[899] = {1,1}
         self.PresetDump[900] = {2,2}
@@ -2702,6 +2742,34 @@ function PresetDumpHandler:new(o)
     
     local PresetDumpBuffer = MessageBuffer:new()
     
+
+    function self.presetDumpHeaderResponseParser(response)
+        -- clean spaces and remove sysex universal control bytes
+        -- local syxctl = "F0180F0055"
+        -- response = du.cleanSysexUniversalMessage(du.removeSpaces(response), syxctl)
+        local byteTable = du.stringToByteTable(response)
+        -- use Message Contract to build MessageObject Table mapped {paramid,byte(s)}
+        -- same keys used in both tables
+        local msgObj = {}
+        for k, v in pairs(MessageContracts:new().PresetDumpHeader) do
+            if (v[1] == v[2]) then
+                msgObj[k] = string.format("%s", byteTable[v[1]])
+            else
+                local data = ""
+                for i=v[1],v[2] do
+                    data = data .. byteTable[i]
+                end
+                msgObj[k] = data
+                -- msgObj[k] = string.format("%s%s", byteTable[v[1]], byteTable[v[2]])
+            end
+            if (du.isContains(msgObj[k],"nil") ) then 
+                print(string.format("ERROR at k[%s] v[%s]",k,v))
+            end
+        end
+        return msgObj
+
+    end
+
     ---parse response message to byteTable then create mapped object table from it using MessageContract
     ---@param response string response message
     ---@return table MessageObject table of mapped paramIds -> hex value(s)
@@ -2764,33 +2832,37 @@ function PresetDumpHandler:new(o)
 
     ---prepare the PresetDump messages for parsing
     ---@param presetDumpTable table table holding RAW preset sysex data
-    ---@return string response
-    ---@return string statusMessage
+    ---@return table results table holding PresetDumpHeader and PresetDump response data
+    ---@return string statusMessage status message
     function self.presetDumpResponseHandler(presetDumpTable)
         -- iterate the table, stripping sysex control bytes and any spaces
         -- check for even message length
-        local syxctl = "F0180Fid551002pppp" -- +4 for packet numbers
-
-
-
-
-                                    --[[ PresetDumpHeader is 1st message in table ]]
-        -- TODO add PresetHeaderResponse Handling
-        local presetHeader = presetDumpTable[1]
-
-
-
-
-        -- PresetDump starts at 2nd message in table
-        local response = ""
-        for i=2,#presetDumpTable do
-            -- clean spaces and remove sysex universal control bytes
-            response = response .. du.cleanSysexUniversalMessage(du.removeSpaces(presetDumpTable[i]), #syxctl)
+        local results = {}
+        
+        do --[[ PresetDumpHeader is 1st message in table ]]
+            local presetHeader = presetDumpTable[1]
+            local syxctlHeader = "F0180Fid551001"
+            local headerResponse = du.cleanSysexUniversalMessage(du.removeSpaces(presetDumpTable[1]), #syxctlHeader)
             -- check message length is even, abort if not
-            if(#response %2 ~= 0) then return "",string.format("response is invalid length [%s]",#response) end
+            if(#headerResponse %2 ~= 0) then return {},string.format("response is invalid length [%s]",#headerResponse) end
+            results.headerObj = self.presetDumpHeaderResponseParser(headerResponse)
+            results.headerResponse = headerResponse
         end
 
-        return response, "Successful compacting of Message Table to single string"
+        -- PresetDump starts at 2nd message in table
+        local dumpResponse = ""
+        for i=2,#presetDumpTable do
+            local syxctl = "F0180Fid551002pppp" -- +4 for packet numbers
+            -- clean spaces and remove sysex universal control bytes
+            dumpResponse = dumpResponse .. du.cleanSysexUniversalMessage(du.removeSpaces(presetDumpTable[i]), #syxctl)
+            -- check message length is even, abort if not
+            if(#dumpResponse %2 ~= 0) then return {},string.format("response is invalid length [%s]",#dumpResponse) end
+
+        end
+        results.dumpObj = self.presetDumpResponseParser(dumpResponse)
+        results.dumpReponse = dumpResponse
+
+        return results, "Successful compacting of Message Table to single string"
     end
 
     self.PresetDumpBuffer = {}
@@ -2919,17 +2991,23 @@ local presetDumpHander = PresetDumpHandler:new()
 for i=1,8 do
     buffer = presetDumpHander.presetDumpReceiverHandler(buffer,responseTable[i])
 end
-local responseString = presetDumpHander.presetDumpResponseHandler(buffer.messages)
-local byteTable = presetDumpHander.presetDumpResponseParser(responseString)
 
+local presetDump = presetDumpHander.presetDumpResponseHandler(buffer.messages)
+local dumpObj = presetDump.dumpObj
+local headerObj = presetDump.headerObj
+
+
+-- local responseString = presetDumpHander.presetDumpResponseHandler(buffer.messages)
+-- local byteTable = presetDumpHander.presetDumpResponseParser(responseString)
+local byteTable = presetDumpHander.presetDumpResponseHandler(buffer.messages).dumpObj
 
 --[[ tests PresetDump
 ]]
 local requestTables = RequestsTable:new()
 -- local msgParser = MessageHandler:new()
 local  responseTable = requestTables.PresetDumpResponse
-local setupDumpResponse = presetDumpHander.presetDumpResponseHandler(responseTable)
-local byteTable2 = presetDumpHander.presetDumpResponseParser(setupDumpResponse)
+local byteTable2 = presetDumpHander.presetDumpResponseHandler(responseTable).dumpObj
+
 
 
 --[[ tests PresetDumpReceiver handles incomming messages and builds correct reponse message ( same as prefab static string) ]]
@@ -2939,9 +3017,14 @@ for k,v in pairs(byteTable) do
         isSuccess = false
     end
 end
-
 print(string.format("Verifying byte tables match: SUCCESS:[%s]",tostring(isSuccess)))
 
+for k,v in pairs(byteTable) do
+    if(dumpObj[k] ~= byteTable[k]) then
+        isSuccess = false
+    end
+end
+print(string.format("Verifying byte tables match: SUCCESS:[%s]",tostring(isSuccess)))
 
 --[[ tests SetupDump 
 local requestTables = RequestsTable:new()
