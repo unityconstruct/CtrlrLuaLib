@@ -1,3 +1,9 @@
+--- Ctrlr BackEnd Logic for Sysex Handling
+---@module SysexHandler
+
+local SysexHandler = {}
+
+
 local RequestsTable = {}
 function RequestsTable:new(o)
     o = o or {}
@@ -8,41 +14,39 @@ function RequestsTable:new(o)
     self.IdentityResponse              = "F07E0006021804040D00322E3030F7"
     self.HardwareConfigurationRequest  = "F0180F00550AF7"
     self.HardwareConfigurationResponse = "F0180F00550902000401060E0000043B09F7"
+    
+    --- 15-18 - handshake packet counter
+    ---@type table
     self.PresetDumpResponse            = {}
+    self.PresetDumpResponse[1]         = "F0180F0055100164005E0B0000380013001000140004001F0003000A002A0048000000F7"
+    self.PresetDumpResponse[2]         = "F0180F0055100201006869743A44616E6365203231202020207F000000000000000000500000003C0000001E00000000003C0004000E0000002E00620064002F00630064000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007F000000070021000A00000001000100070000000000000000000000000000007F007F7F0E00000001002800600000000A000000000001000000030000000A0000000000000000007F7F000000000000000000007F0000007F007F7F000000000000000000007F0000007F000E000E00650400005EF7"
+    self.PresetDumpResponse[3]         = "F0180F00551002020000000000000000007F000000000000007F000000000000007F000000000000002600000000000000020000000000010000000000000000000E0000000000000040000000000000000000677F010000000000010001000000640000006400140000000000640000002300000000000100000064000000640000000000000064000000000000000000010000000000000063001400000000006400000064000000000000000000000014003800640015003900500050003800640020005100447F21005200447F22004900587F23004A00307F24004C00410025004B00307F0C00400000002800310150000C003800000029001DF7"
+    self.PresetDumpResponse[4]         = "F0180F005510020300330150006800410000002A00350164002B0068000C006000300000002C00380106002D00300026002D002F0006001600080064000000000000000000000000000000000000000000000000000000000000007F000000000000007F000000000000007F000000000000000000000000000000020000000000010000000000000000000E0000000000000040000000000000000000677F010000000000010001000000640000006400140000000000640000002300000000000100000064000000640000000000000064000000000000000000010000000000000063001400000000006400000064000000000000000000000006F7"
+    self.PresetDumpResponse[5]         = "F0180F00551002040014003800640015003900500050003800640020005100447F21005200447F22004900587F23004A00307F24004C00410025004B00307F0C00400000002800310150000C00380000002900330150006800410000002A00350164002B0068000C006000300000002C00380106002D00300026002D002F0006001600080064000000000000000000000000000000000000000000000000000000000000007F000000000000007F000000000000007F000000000000000000000000000000020000000000010000000000000000000E0000000000000040000000000000000000677F01000000000001000100000064000000640059F7"
+    self.PresetDumpResponse[6]         = "F0180F005510020500140000000000640000002300000000000100000064000000640000000000000064000000000000000000010000000000000063001400000000006400000064000000000000000000000014003800640015003900500050003800640020005100447F21005200447F22004900587F23004A00307F24004C00410025004B00307F0C00400000002800310150000C00380000002900330150006800410000002A00350164002B0068000C006000300000002C00380106002D00300026002D002F0006001600080064000000000000000000000000000000000000000000000000000000000000007F000000000000007F00000052F7"
+    self.PresetDumpResponse[7]         = "F0180F005510020600000000007F000000000000000000000000000000020000000000010000000000000000000E0000000000000040000000000000000000677F010000000000010001000000640000006400140000000000640000002300000000000100000064000000640000000000000064000000000000000000010000000000000063001400000000006400000064000000000000000000000014003800640015003900500050003800640020005100447F21005200447F22004900587F23004A00307F24004C00410025004B00307F0C00400000002800310150000C00380000002900330150006800410000002A00350164002B0068003DF7"
+    self.PresetDumpResponse[8]         = "F0180F0055100207000C006000300000002C00380106002D00300026002D002F00060016000800640000000000000000000000000000000000000011F7"
+    self.PresetDumpResponse[9]         = "F0180F00557BF7"
+    
+    --- 13-16 - handshake packet counter
+    ---@type table
     self.PresetDumpAck                 = {}
-    self.PresetDumpResponse[1]         = "F0180F0055 10 0164005E0B0000380013001000140004001F0003000A002A0048000000F7"
-    self.PresetDumpAck[1]              = "F0180F0055 7F 0000 F7"
-    self.PresetDumpResponse[2]         =
-    "F0180F0055 10 0201006869743A44616E6365203231202020207F000000000000000000500000003C0000001E00000000003C0004000E0000002E00620064002F00630064000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007F000000070021000A00000001000100070000000000000000000000000000007F007F7F0E00000001002800600000000A000000000001000000030000000A0000000000000000007F7F000000000000000000007F0000007F007F7F000000000000000000007F0000007F000E000E00650400005EF7"
-    self.PresetDumpAck[2]              = "F0180F0055 7F 0100 F7"
-    self.PresetDumpResponse[3]         =
-    "F0180F0055 10 02020000000000000000007F000000000000007F000000000000007F000000000000002600000000000000020000000000010000000000000000000E0000000000000040000000000000000000677F010000000000010001000000640000006400140000000000640000002300000000000100000064000000640000000000000064000000000000000000010000000000000063001400000000006400000064000000000000000000000014003800640015003900500050003800640020005100447F21005200447F22004900587F23004A00307F24004C00410025004B00307F0C00400000002800310150000C003800000029001DF7"
-    self.PresetDumpAck[3]              = "F0180F0055 7F 0200 F7"
-    self.PresetDumpResponse[4]         =
-    "F0180F0055 10 020300330150006800410000002A00350164002B0068000C006000300000002C00380106002D00300026002D002F0006001600080064000000000000000000000000000000000000000000000000000000000000007F000000000000007F000000000000007F000000000000000000000000000000020000000000010000000000000000000E0000000000000040000000000000000000677F010000000000010001000000640000006400140000000000640000002300000000000100000064000000640000000000000064000000000000000000010000000000000063001400000000006400000064000000000000000000000006F7"
-    self.PresetDumpAck[4]              = "F0180F0055 7F 0300 F7"
-    self.PresetDumpResponse[5]         =
-    "F0180F0055 10 02040014003800640015003900500050003800640020005100447F21005200447F22004900587F23004A00307F24004C00410025004B00307F0C00400000002800310150000C00380000002900330150006800410000002A00350164002B0068000C006000300000002C00380106002D00300026002D002F0006001600080064000000000000000000000000000000000000000000000000000000000000007F000000000000007F000000000000007F000000000000000000000000000000020000000000010000000000000000000E0000000000000040000000000000000000677F01000000000001000100000064000000640059F7"
-    self.PresetDumpAck[5]              = "F0180F0055 7F 0400 F7"
-    self.PresetDumpResponse[6]         =
-    "F0180F0055 10 020500140000000000640000002300000000000100000064000000640000000000000064000000000000000000010000000000000063001400000000006400000064000000000000000000000014003800640015003900500050003800640020005100447F21005200447F22004900587F23004A00307F24004C00410025004B00307F0C00400000002800310150000C00380000002900330150006800410000002A00350164002B0068000C006000300000002C00380106002D00300026002D002F0006001600080064000000000000000000000000000000000000000000000000000000000000007F000000000000007F00000052F7"
-    self.PresetDumpAck[6]              = "F0180F0055 7F 0500 F7"
-    self.PresetDumpResponse[7]         =
-    "F0180F0055 10 020600000000007F000000000000000000000000000000020000000000010000000000000000000E0000000000000040000000000000000000677F010000000000010001000000640000006400140000000000640000002300000000000100000064000000640000000000000064000000000000000000010000000000000063001400000000006400000064000000000000000000000014003800640015003900500050003800640020005100447F21005200447F22004900587F23004A00307F24004C00410025004B00307F0C00400000002800310150000C00380000002900330150006800410000002A00350164002B0068003DF7"
-    self.PresetDumpAck[7]              = "F0180F0055 7F 0600 F7"
-    self.PresetDumpResponse[8]         =
-    "F0180F0055 10 0207000C006000300000002C00380106002D00300026002D002F00060016000800640000000000000000000000000000000000000011F7"
-    self.PresetDumpAck[8]              = "F0180F0055 7F 0700 F7"
-    self.PresetDumpResponse[9]         = "F0180F0055 7B F7"
-
-    self.SetupDumpResponse             =
-    "F0180F00551C1E00230010001500030020000900557365722053657475702020202020200001010000000000020000000100010000000100000002007F7F7F7F0000000000000E0000003E007F7F0100000005000100000000000000010001000200000000004A00470019001A0049004B005500480040004100420011001000010020014E004D001B001C00010003005200530001000000000000000000000000000100000001002800600000000A0014001E000100000003000000000000000000000000000100000000000A00000001000000010000000000000000000000000000007F000000030000000000000000007F7F1F0003017F0040007F7F0000010000000100000001007F0040007F7F0000010000000100000002007F0040007F7F0000010000000100000003007F0040007F7F0000010000000100000004007F0040007F7F0000010000000100000005007F0040007F7F0000010000000100000006007F0040007F7F0000010000000100000007007F0040007F7F0000010000000100000008007F0040007F7F0000010000000100000009007F0040007F7F000001000000010000000A007F0040007F7F000001000000010000000B007F0040007F7F000001000000010000000C007F0040007F7F000001000000010000000D007F0040007F7F000001000000010000000E007F0040007F7F000001000000010000000F007F0040007F7F0000010000000100000010007F0040007F7F0000010000000100000011007F0040007F7F0000010000000100000012007F0040007F7F0000010000000100000013007F0040007F7F0000010000000100000014007F0040007F7F0000010000000100000015007F0040007F7F0000010000000100000016007F0040007F7F0000010000000100000017007F0040007F7F0000010000000100000018007F0040007F7F0000010000000100000019007F0040007F7F000001000000010000001A007F0040007F7F000001000000010000001B007F0040007F7F000001000000010000001C007F0040007F7F000001000000010000001D007F0040007F7F000001000000010000001E007F0040007F7F000001000000010000001F007F0040007F7F00000100000001000000F7"
+    self.PresetDumpAck[1]              = "F0180F00557F0000F7"
+    self.PresetDumpAck[2]              = "F0180F00557F0100F7"
+    self.PresetDumpAck[3]              = "F0180F00557F0200F7"
+    self.PresetDumpAck[4]              = "F0180F00557F0300F7"
+    self.PresetDumpAck[5]              = "F0180F00557F0400F7"
+    self.PresetDumpAck[6]              = "F0180F00557F0500F7"
+    self.PresetDumpAck[7]              = "F0180F00557F0600F7"
+    self.PresetDumpAck[8]              = "F0180F00557F0700F7"
+    
+    self.SetupDumpResponse             = "F0180F00551C1E00230010001500030020000900557365722053657475702020202020200001010000000000020000000100010000000100000002007F7F7F7F0000000000000E0000003E007F7F0100000005000100000000000000010001000200000000004A00470019001A0049004B005500480040004100420011001000010020014E004D001B001C00010003005200530001000000000000000000000000000100000001002800600000000A0014001E000100000003000000000000000000000000000100000000000A00000001000000010000000000000000000000000000007F000000030000000000000000007F7F1F0003017F0040007F7F0000010000000100000001007F0040007F7F0000010000000100000002007F0040007F7F0000010000000100000003007F0040007F7F0000010000000100000004007F0040007F7F0000010000000100000005007F0040007F7F0000010000000100000006007F0040007F7F0000010000000100000007007F0040007F7F0000010000000100000008007F0040007F7F0000010000000100000009007F0040007F7F000001000000010000000A007F0040007F7F000001000000010000000B007F0040007F7F000001000000010000000C007F0040007F7F000001000000010000000D007F0040007F7F000001000000010000000E007F0040007F7F000001000000010000000F007F0040007F7F0000010000000100000010007F0040007F7F0000010000000100000011007F0040007F7F0000010000000100000012007F0040007F7F0000010000000100000013007F0040007F7F0000010000000100000014007F0040007F7F0000010000000100000015007F0040007F7F0000010000000100000016007F0040007F7F0000010000000100000017007F0040007F7F0000010000000100000018007F0040007F7F0000010000000100000019007F0040007F7F000001000000010000001A007F0040007F7F000001000000010000001B007F0040007F7F000001000000010000001C007F0040007F7F000001000000010000001D007F0040007F7F000001000000010000001E007F0040007F7F000001000000010000001F007F0040007F7F00000100000001000000F7"
     self.SetupDumpResponseAck          = {}
-
 
 
     return self
 end
+
 
 local DataUtils = {}
 function DataUtils:new(o)
@@ -53,7 +57,7 @@ function DataUtils:new(o)
     --- runc a function in protected mode: essentially try/catch
     ---@param func function - function to invoke using pcall(FUNCITON,ARGS)
     ---@return boolean, string - . true/false result + status message Success/Fail
-    function self.tryCatchFunc(func, ...)
+        function self.tryCatchFunc(func, ...)
         local msg
         local isSuccess = false
         if ((#... == 0) == true) then -- NO arguments
@@ -82,7 +86,7 @@ function DataUtils:new(o)
     --- Ctrlr uses console() Lua lang uses print()
     --- Attempts print(), if error then try console()
     ---@param value any - string to output to call
-    function self.p(value)
+        function self.p(value)
         if (pcall(print, tostring(value))) then
         else
             pcall(console, tostring(value))
@@ -101,15 +105,15 @@ function DataUtils:new(o)
         --- @param valueTable table table to convert to string
         --- @param separator string separator character
         --- @return string
-        function self.TableToStringWithDelimiter(valueTable, separator)
+        function self.tableToStringWithDelimiter(valueTable, separator)
             return table.concat(valueTable, separator)
         end
 
         --- coverts table to delimited string using separator ","
         --- @param valueTable table
         --- @return string
-        function self.TableToString(valueTable)
-            return self.TableToStringWithDelimiter(valueTable, ",")
+        function self.tableToString(valueTable)
+            return self.tableToStringWithDelimiter(valueTable, ",")
         end
 
         ---string spaces from a string
@@ -183,7 +187,8 @@ function DataUtils:new(o)
         end
     end
 
-    do -- string operations returning data
+    do -- string operations returning/putting data
+
         --- return substring of haystack by startIndex and field length
         function self.fetchDataUsingPositionAndLength(haystack, pointer, length)
             local last = pointer + length - 1
@@ -191,8 +196,6 @@ function DataUtils:new(o)
         end
 
         --- return substring of haystack by startIndex and field length
-
-        ---comment
         ---@param haystack string string to search
         ---@param first integer first index of substring
         ---@param last integer last index of substring
@@ -292,6 +295,55 @@ function DataUtils:new(o)
                 return result -- return the data without changes
             end
         end
+
+
+                --- Fetches a substring from HAYSTACK, using a MASK/NEEDLE as a lookup table<br/>
+        --searches MASK for NEED for START, END positions<br/>
+        --returns substring from HAYSTACK of START, END<br/>
+        --example: <br/>
+        --local requestSetParameter = {}<br/>
+        --requestSetParameter[0] = "0201aaaabbbb"<br/>
+        --requestSetParameter[1] = {"aaaa","paramname"}<br/>
+        --requestSetParameter[2] = {"bbbb","paramvalue"}<br/>
+        --request = setDataUsingMask(request,requestSetMultiModeRomId[1][1],"0A01")<br/>
+        --["0201aaaabbbb"] ==> ["02010A01bbbb"]<br/>
+        --- @param haystack string source to fetch data
+        -- - @param mask string indexing string searched for needle to get substring first/last positions in haystack
+        --- @param mask string search term for mask
+        --- @param data string data to insert in place of mask
+        --- @return string msg return the haystack with replaced values
+        --- @return string status status message
+        function self.putDataUsingMask(haystack, mask,data)
+            -- error checking
+            -- if(#mask ~= #data) then return "ERORR", string.format("ERROR: data[%s][%d] size does not match mask[%s][%d] size",data,#data,mask,#mask) end
+
+            local result = string.gsub(haystack, mask, data)
+            local msg = string.format(
+                "put data using mask on haystack:[%s] using mask:[%s] on needle: [%s] put data:[%s]\n result:[%s]",
+                haystack, mask, mask,data,result)
+            print(msg)
+            return result, msg
+
+            -- local first, last = string.find(mask, needle, 1, true)
+            -- if (first ~= nil or last ~= nil) then
+                -- first = first or 1
+                -- local result = string.sub(haystack, first, last)
+                -- local msg = string.format(
+                --     "Search dump:[%s] using mask:[%s] on needle: [%s] Found start:[%d] end:[%d] result:[%s]", haystack,
+                --     mask,
+                    -- needle, first, last, result)
+                -- print(msg)
+                -- if (result == nil) then
+                --     return ""
+                -- else
+                --     return result
+                -- end
+            -- else
+            --     return haystack
+            -- end
+        end
+
+
     end
 
     do -- hex formatting
@@ -311,19 +363,26 @@ function DataUtils:new(o)
             return self.hex2int(hex, 16)
         end
 
+
+        --[[
+
+            -- "%.#"
+            -- negative operats from Left>Right.<br/>
+            -- +int: returns substring with lenth from start>end index<br/>
+            -- -int: returns substring with length from end>start
+            -- %0#x: padds leading zeros to fill up # posistions
+            -- %.#x:
+        ]]--
+
+        
+        
         ---format an integer to hex. Supports :sub() length argument
-        --- "%.#"
-        --->negative operats from Left>Right.<br/>
-        ---+int: returns substring with lenth from start>end index<br/>
-        ----int: returns substring with length from end>start
-        ---%0#x: padds leading zeros to fill up # posistions
-        ---%.#x:
         ---@param value integer value to convert
         ---@param length integer adjusts formatting length.
         ---@return string formattted hexString
         function self.formatValueToHex(value, length)
-            if value ~= nil then
-                return ""
+            if (value ~= "nil") then
+                return
             elseif (value > -512) and (value < 511) then
                 return string.format("%.2x", value):sub(-2)
             elseif (value > -65535) and (value < 65534) then
@@ -350,6 +409,7 @@ function DataUtils:new(o)
             local msg = string.format("Formatting to Hex: Value:[%s] HexString:[%s] ", value, hexString)
             return hexString, msg
         end
+
 
         function self.formatValueToHex256(value, length)
             length = length or -2
@@ -442,7 +502,7 @@ function DataUtils:new(o)
         --- @param lsb integer
         --- @param msb integer
         --- @return integer value
-        function self.DeNibblizeLSBMSB(lsb, msb)
+        function self.deNibblizeLSBMSB(lsb, msb)
             local value
             local rawValue = (msb * 128) + lsb
 
@@ -459,9 +519,9 @@ function DataUtils:new(o)
         --- convert a nibble(msb/lsb) to integer value
         --- @param nibble table
         --- @return integer value
-        function self.DeNibblizeTable(nibble)
+        function self.deNibblizeTable(nibble)
             if (#nibble == 2) then
-                return self.DeNibblizeLSBMSB(nibble[1], nibble[2])
+                return self.deNibblizeLSBMSB(nibble[1], nibble[2])
             else
                 return 0
             end
@@ -470,6 +530,7 @@ function DataUtils:new(o)
 
 
     do -- bin/dec
+
         function self.dec2bin(decNum)
             local t = {}
             local i
@@ -498,6 +559,7 @@ function DataUtils:new(o)
     end
 
     do -- bool/string
+
         --- convert boolean to string
         ---@param valueBoolean boolean boolean to parse
         ---@return string . returns 0 if false, 1 if true
@@ -586,14 +648,24 @@ function DataUtils:new(o)
             return returnMsg, status
         end
 
-        ---check that message is SysexUniversal, trim control bytes if true
-        --- if error thrown, return the original message
-        --->pattern = string, use string length for substring start
-        --->pattern = integer, use value
-        ---@param msg string - message to parse and clean
-        ---@return string returnMsg return cleaned message
-        ---@return string status return status message
+        --[[
+
+            ---check that message is SysexUniversal, trim control bytes if true
+            --- if error thrown, return the original message
+            ---pattern = string, use string length for substring start
+            ---pattern = integer, use value
+            ---@param msg string message to parse and clean
+            ---@param pattern string|integer message to parse and clean
+            ---@return string returnMsg return cleaned message
+            ---@return string status return status message
+            ]]
+
+
+
         function self.cleanSysexUniversalMessage(msg, pattern)
+            setmetatable({},self)
+            self.__index = self
+
             local status, returnMsg
             local originalMsg = msg -- save original msg in the event error occurs
             -- if msg = nil, do nothing & return it
@@ -636,47 +708,62 @@ function DataUtils:new(o)
 end
 
 ---@type table
-local MessageSpecs = {}
+local MessageSpecs = {
+    SysexWrapper = "F0180F0055XXF7",
+    SysexUniversal_Prefix = "F0180F",
+    SysexUniversal_SOX = "F0",
+    SysexUniversal_EOX = "F7"
+}
 ---tables holding sysex messaging specifications
----@return table MessageSpecs an instance of this MessageSpecs table
 function MessageSpecs:new()
     setmetatable({}, self)
     self.__index = self
 
+    
+
     do -- handshaking
+        ---@type table
         self.ACK = {}
         self.ACK[0] = { "7F", "Mask" }
         self.ACK[1] = { "7F", "Command" }
+
+        ---@type table
         self.ACKClosedLoopwithPacketCounter = {}
         self.ACKClosedLoopwithPacketCounter[0] = { "7Faaaa", "Mask" }
         self.ACKClosedLoopwithPacketCounter[1] = { "7F", "Command" }
         self.ACKClosedLoopwithPacketCounter[2] = { "aaaa", "" }
+        ---@type table<table<string,string>>
         self.NAK = {}
         self.NAK[0] = { "7Eaaaa", "Mask" }
         self.NAK[1] = { "7E", "Command" }
         self.NAK[2] = { "aaaa", "" }
+        ---@type table<table<string,string>>
         self.CANCEL = {}
         self.CANCEL[0] = { "7D", "Mask" }
         self.CANCEL[1] = { "7D", "Command" }
+        ---@type table<table<string,string>>
         self.WAIT = {}
         self.WAIT[0] = { "7C", "Mask" }
         self.WAIT[1] = { "7C", "Command" }
+        ---@type table<table<string,string>>
         self.EOF = {}
         self.EOF[0] = { "7B", "Mask" }
         self.EOF[1] = { "7B", "Command" }
     end
 
     do -- sysex non-realtime
+        ---@type table<table<string,string>>
         self.MasterVolume = {}
         self.MasterVolume[0] = { "7Eid0401aaaa", "Mask" }
         self.MasterVolume[1] = { "04", "Command" }
         self.MasterVolume[2] = { "01", "SubCommand" }
         self.MasterVolume[3] = { "aaaa", "volumelevel" }
+        ---@type table<table<string,string>>
         self.DeviceInquiry = {}
         self.DeviceInquiry[0] = { "7Eid0601", "Mask" }
         self.DeviceInquiry[1] = { "06", "Command" }
         self.DeviceInquiry[2] = { "01", "SubCommand" }
-
+        ---@type table<table<string,string>>
         self.DeviceInquiryResponse = {}
         self.DeviceInquiryResponse[0] = { "7Eid060218aaaabbbbcccccccc", "Mask" }
         self.DeviceInquiryResponse[1] = { "06", "Command" }
@@ -689,6 +776,8 @@ function MessageSpecs:new()
     end
 
     do -- Program Change
+
+        ---@type table<table<string,string>>
         self.ProgramChangePresetMapDumpResponse = {}
         self.ProgramChangePresetMapDumpResponse[0] = { "16aa[256]bb[256]", "Mask" }
         self.ProgramChangePresetMapDumpResponse[1] = { "16", "Command" }
@@ -702,6 +791,7 @@ function MessageSpecs:new()
     end
 
     do -- parameter request/response
+        ---@type table<table<string,string>>
         self.ParameterEditRequest = {}
         self.ParameterEditRequest[0] = { "0102aaaabbbb", "Mask" }
         self.ParameterEditRequest[1] = { "01", "Command" }
@@ -718,17 +808,20 @@ function MessageSpecs:new()
         ]]
         --
 
+        ---@type table<table<string,string>>
         self.ParameterValueRequest = {}
         self.ParameterValueRequest[0] = { "0201aaaa", "Mask" }
         self.ParameterValueRequest[1] = { "02", "Command" }
         self.ParameterValueRequest[2] = { "01", "SubCommand" }
         self.ParameterValueRequest[3] = { "aaaa", "Parameter ID (LSB first)" }
 
+        ---@type table<table<string,string>>
         self.ParamMinMaxDefaultValueRequest = {}
         self.ParamMinMaxDefaultValueRequest[0] = { "04aaaa", "Mask" }
         self.ParamMinMaxDefaultValueRequest[1] = { "04", "Command" }
         self.ParamMinMaxDefaultValueRequest[2] = { "aaaa", "Parameter ID" }
 
+        ---@type table<table<string,string>>
         self.ParamMinMaxDefaultValueResponse = {}
         self.ParamMinMaxDefaultValueResponse[0] = { "03aaaabbbbccccddddee", "Mask" }
         self.ParamMinMaxDefaultValueResponse[1] = { "03", "Command" }
@@ -741,7 +834,7 @@ function MessageSpecs:new()
     end
 
     do -- Hardware Configuration
-        ---@type table<string,string>
+        ---@type table<table<string,string>>
         self.HardwareConfigurationRequest = {}
         self.HardwareConfigurationRequest[0] = { "0A", "Mask" }
         self.HardwareConfigurationRequest[1] = { "0A", "Command" }
@@ -753,16 +846,18 @@ function MessageSpecs:new()
         -- 02 0004 01 06 0E00 0004 3B09
         self.HardwareConfigurationResponse[2] = { "aa", "Number of General Information Bytes" }
         self.HardwareConfigurationResponse[3] = { "bbbb", "Number of User Presets" }
-        --- simm data iterator
+        -- simm data iterator
         self.HardwareConfigurationResponse[4] = { "cc", "Number of Simms Installed" }
         self.HardwareConfigurationResponse[5] = { "dd", "Number of Information Bytes per Sim" }
-        -- set
+        -- simm preset model
         self.HardwareConfigurationResponse[6] = { "eeee", "Simm ID" }
         self.HardwareConfigurationResponse[7] = { "ffff", "Number of Sim Presets" }
         self.HardwareConfigurationResponse[8] = { "gggg", "Number of Sim Instruments" }
     end
 
     do -- Setup Dump
+
+        ---@type table<table<string,string>>
         self.SetupDumpResponse = {}
         self.SetupDumpResponse[0] = { "1Caaaabbbbccccddddeeeeffffgggg[736]F7[1622443240657", "Mask" }
         self.SetupDumpResponse[1] = { "1C", "Command" }
@@ -781,16 +876,19 @@ function MessageSpecs:new()
         self.SetupDumpResponse[14] = { "[40]", "Reserved" }
         self.SetupDumpResponse[15] = { "[6]", "Non Channel Parameter Values" }
         self.SetupDumpResponse[16] = { "[576]", "Channel Parameters" }
+        ---@type table<table<string,string>>
         self.SetupDumpRequest = {}
         self.SetupDumpRequest[0] = { "1D", "Mask" }
         self.SetupDumpRequest[1] = { "1D", "Command" }
         -- Generic Dump
+        ---@type table<table<string,string>>
         self.GenericDumpRequest = {}
         self.GenericDumpRequest[0] = { "61000100aaaabbbb", "Mask" }
         self.GenericDumpRequest[1] = { "6100", "command::genericdump" }
         self.GenericDumpRequest[2] = { "0100", "objecttype01=masterdata" }
         self.GenericDumpRequest[3] = { "aaaa", "objectnumber(zeroformastersetupdata)" }
         self.GenericDumpRequest[4] = { "bbbb", "romnumber(zeroformastersetupdata)" }
+        ---@type table<table<string,string>>
         self.GenericDump = {}
         self.GenericDump[0] = { "61aabbccddddeeeeffff[gggghhhhiiiijjjjkkkk]", "Mask" }
         self.GenericDump[1] = { "61", "Command" }
@@ -811,6 +909,7 @@ function MessageSpecs:new()
     end
 
     do -- Generic Dump
+        ---@type table<table<string,string>>
         self.GenericName = {}
         self.GenericName[0] = { "0BaabbbbccccAAAAAAAAAAAAAAAA", "Mask" }
         self.GenericName[1] = { "0B", "Command" }
@@ -818,6 +917,7 @@ function MessageSpecs:new()
         self.GenericName[3] = { "bbbb", "Object Number" }
         self.GenericName[4] = { "cccc", "Object ROM ID" }
         self.GenericName[5] = { "aaaaaaaaaaaaaaaa", "Name ( x16 ASCII Chars )" }
+        ---@type table<table<string,string>>
         self.GenericNameRequest = {}
         self.GenericNameRequest[0] = { "0Caabbbbcccc", "Mask" }
         self.GenericNameRequest[1] = { "0C", "Command" }
@@ -827,6 +927,7 @@ function MessageSpecs:new()
     end
 
     do -- Preset Dump ClosedLoop
+        ---@type table<table<string,string>>
         self.PresetDumpHeaderClosedLoopResponse = {}
         self.PresetDumpHeaderClosedLoopResponse[0] = { "1001aaaabbbbbbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmm",
             "Mask" }
@@ -845,6 +946,7 @@ function MessageSpecs:new()
         self.PresetDumpHeaderClosedLoopResponse[13] = { "kkkk", "Number of Preset Layer Envelope Parameters, LSB first." }
         self.PresetDumpHeaderClosedLoopResponse[14] = { "llll", "Number of Preset Layer PatchCord Parameters, LSB first." }
         self.PresetDumpHeaderClosedLoopResponse[15] = { "mmmm", "Preset ROM ID" }
+        ---@type table<table<string,string>>
         self.PresetDumpDataClosedLoopResponse = {}
         self.PresetDumpDataClosedLoopResponse[0] = { "1002aaaa[244]ck", "Mask" }
         self.PresetDumpDataClosedLoopResponse[1] = { "10", "Command" }
@@ -855,6 +957,7 @@ function MessageSpecs:new()
     end
 
     do -- Preset Dump Open Loop
+        ---@type table<table<string,string>>
         self.PresetDumpHeaderOpenLoopResponse = {}
         self.PresetDumpHeaderOpenLoopResponse[0] = { "1003aaaabbbbbbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmm",
             "Mask" }
@@ -873,6 +976,7 @@ function MessageSpecs:new()
         self.PresetDumpHeaderOpenLoopResponse[13] = { "kkkk", "Number of Preset Layer Envelope Parameters, LSB first." }
         self.PresetDumpHeaderOpenLoopResponse[14] = { "llll", "Number of Preset Layer PatchCord Parameters, LSB first." }
         self.PresetDumpHeaderOpenLoopResponse[15] = { "mmmm", "Preset ROM ID" }
+        ---@type table<table<string,string>>
         self.PresetDumpDataOpenLoopResponse = {}
         self.PresetDumpDataOpenLoopResponse[0] = { "1004aabb[244]ck", "Mask" }
         self.PresetDumpDataOpenLoopResponse[1] = { "10", "Command" }
@@ -882,59 +986,70 @@ function MessageSpecs:new()
     end
 
     do -- Preset Common
+        ---@type table<table<string,string>>
         self.PresetCommonParamsDumpDataResponse = {}
         self.PresetCommonParamsDumpDataResponse[0] = { "1010[240]", "Mask" }
         self.PresetCommonParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetCommonParamsDumpDataResponse[2] = { "10", "SubCommand" }
         self.PresetCommonParamsDumpDataResponse[3] = { "[240]", "" }
+        ---@type table<table<string,string>>
         self.PresetCommonGeneralParamsDumpDataResponse = {}
         self.PresetCommonGeneralParamsDumpDataResponse[0] = { "1011[126]", "Mask" }
         self.PresetCommonGeneralParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetCommonGeneralParamsDumpDataResponse[2] = { "11", "SubCommand" }
         self.PresetCommonGeneralParamsDumpDataResponse[3] = { "[126]", "" }
+        ---@type table<table<string,string>>
         self.PresetCommonArpParamsDumpDataResponse = {}
         self.PresetCommonArpParamsDumpDataResponse[0] = { "1012[38]", "Mask" }
         self.PresetCommonArpParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetCommonArpParamsDumpDataResponse[2] = { "12", "SubCommand" }
         self.PresetCommonArpParamsDumpDataResponse[3] = { "[38]", "" }
+        ---@type table<table<string,string>>
         self.PresetCommonEffectsParamsDumpDataResponse = {}
         self.PresetCommonEffectsParamsDumpDataResponse[0] = { "1013[38]", "Mask" }
         self.PresetCommonEffectsParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetCommonEffectsParamsDumpDataResponse[2] = { "13", "SubCommand" }
         self.PresetCommonEffectsParamsDumpDataResponse[3] = { "[38]", "" }
+        ---@type table<table<string,string>>
         self.PresetCommonLinkParamsDumpDataResponse = {}
         self.PresetCommonLinkParamsDumpDataResponse[0] = { "1014[46]", "Mask" }
         self.PresetCommonLinkParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetCommonLinkParamsDumpDataResponse[2] = { "14", "SubCommand" }
         self.PresetCommonLinkParamsDumpDataResponse[3] = { "[46]", "" }
-        self.PresetLayerParamsDumpDataResponse = {}
     end
-
+    
     do -- Preset Layer
+        ---@type table<table<string,string>>
+        self.PresetLayerParamsDumpDataResponse = {}
         self.PresetLayerParamsDumpDataResponse[0] = { "1020[332]", "Mask" }
         self.PresetLayerParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetLayerParamsDumpDataResponse[2] = { "20", "SubCommand" }
         self.PresetLayerParamsDumpDataResponse[3] = { "[332]", "" }
+        ---@type table<table<string,string>>
         self.PresetLayerGeneralParamsDumpDataResponse = {}
         self.PresetLayerGeneralParamsDumpDataResponse[0] = { "1021[70]", "Mask" }
         self.PresetLayerGeneralParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetLayerGeneralParamsDumpDataResponse[2] = { "21", "SubCommand" }
         self.PresetLayerGeneralParamsDumpDataResponse[3] = { "[70]", "" }
+        ---@type table<table<string,string>>
         self.PresetLayerFilterParamsDumpDataResponse = {}
         self.PresetLayerFilterParamsDumpDataResponse[0] = { "1022[14]", "Mask" }
         self.PresetLayerFilterParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetLayerFilterParamsDumpDataResponse[2] = { "22", "SubCommand" }
         self.PresetLayerFilterParamsDumpDataResponse[3] = { "[14]", "" }
+        ---@type table<table<string,string>>
         self.PresetLayerLFOParamsDumpDataResponse = {}
         self.PresetLayerLFOParamsDumpDataResponse[0] = { "1023[28]", "Mask" }
         self.PresetLayerLFOParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetLayerLFOParamsDumpDataResponse[2] = { "23", "SubCommand" }
         self.PresetLayerLFOParamsDumpDataResponse[3] = { "[28]", "" }
+        ---@type table<table<string,string>>
         self.PresetLayerEnvelopeParamsDumpDataResponse = {}
         self.PresetLayerEnvelopeParamsDumpDataResponse[0] = { "1024[92]", "Mask" }
         self.PresetLayerEnvelopeParamsDumpDataResponse[1] = { "10", "Command" }
         self.PresetLayerEnvelopeParamsDumpDataResponse[2] = { "24", "SubCommand" }
         self.PresetLayerEnvelopeParamsDumpDataResponse[3] = { "[92]", "" }
+        ---@type table<table<string,string>>
         self.PresetLayerPatchcordParamsDumpDataResponse = {}
         self.PresetLayerPatchcordParamsDumpDataResponse[0] = { "1025[152]", "Mask" }
         self.PresetLayerPatchcordParamsDumpDataResponse[1] = { "10", "Command" }
@@ -943,48 +1058,56 @@ function MessageSpecs:new()
     end
 
     do -- Preset Dump Request
+        ---@type table<table<string,string>>
         self.PresetDumpRequestClosedLoop = {}
         self.PresetDumpRequestClosedLoop[0] = { "1102aaaabbbb", "Mask" }
         self.PresetDumpRequestClosedLoop[1] = { "11", "Command" }
         self.PresetDumpRequestClosedLoop[2] = { "02", "SubCommand" }
         self.PresetDumpRequestClosedLoop[3] = { "aaaa", "Preset Number" }
         self.PresetDumpRequestClosedLoop[4] = { "bbbb", "Preset ROM ID" }
+        ---@type table<table<string,string>>
         self.PresetDumpRequestOpenLoop = {}
         self.PresetDumpRequestOpenLoop[0] = { "1104aaaabbbb", "Mask" }
         self.PresetDumpRequestOpenLoop[1] = { "11", "Command" }
         self.PresetDumpRequestOpenLoop[2] = { "04", "SubCommand" }
         self.PresetDumpRequestOpenLoop[3] = { "aaaa", "Preset Number" }
         self.PresetDumpRequestOpenLoop[4] = { "bbbb", "Preset ROM ID" }
+        ---@type table<table<string,string>>
         self.PresetCommonParamsDumpRequest = {}
         self.PresetCommonParamsDumpRequest[0] = { "1110aaaabbbb", "Mask" }
         self.PresetCommonParamsDumpRequest[1] = { "11", "Command" }
         self.PresetCommonParamsDumpRequest[2] = { "10", "SubCommand" }
         self.PresetCommonParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetCommonParamsDumpRequest[4] = { "bbbb", "Preset ROM ID" }
+        ---@type table<table<string,string>>
         self.PresetCommonGeneralParamsDumpRequest = {}
         self.PresetCommonGeneralParamsDumpRequest[0] = { "1111aaaabbbb", "Mask" }
         self.PresetCommonGeneralParamsDumpRequest[1] = { "11", "Command" }
         self.PresetCommonGeneralParamsDumpRequest[2] = { "11", "SubCommand" }
         self.PresetCommonGeneralParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetCommonGeneralParamsDumpRequest[4] = { "bbbb", "Preset ROM ID" }
+        ---@type table<table<string,string>>
         self.PresetCommonArpParamsDumpRequest = {}
         self.PresetCommonArpParamsDumpRequest[0] = { "1112aaaabbbb", "Mask" }
         self.PresetCommonArpParamsDumpRequest[1] = { "11", "Command" }
         self.PresetCommonArpParamsDumpRequest[2] = { "12", "SubCommand" }
         self.PresetCommonArpParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetCommonArpParamsDumpRequest[4] = { "bbbb", "Preset ROM ID" }
+        ---@type table<table<string,string>>
         self.PresetCommonFXParamsDumpRequest = {}
         self.PresetCommonFXParamsDumpRequest[0] = { "1113aaaabbbb", "Mask" }
         self.PresetCommonFXParamsDumpRequest[1] = { "11", "Command" }
         self.PresetCommonFXParamsDumpRequest[2] = { "13", "SubCommand" }
         self.PresetCommonFXParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetCommonFXParamsDumpRequest[4] = { "bbbb", "Preset ROM ID" }
+        ---@type table<table<string,string>>
         self.PresetCommonLinkParamsDumpRequest = {}
         self.PresetCommonLinkParamsDumpRequest[0] = { "1114aaaabbbb", "Mask" }
         self.PresetCommonLinkParamsDumpRequest[1] = { "11", "Command" }
         self.PresetCommonLinkParamsDumpRequest[2] = { "14", "SubCommand" }
         self.PresetCommonLinkParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetCommonLinkParamsDumpRequest[4] = { "bbbb", "Preset ROM ID" }
+        ---@type table<table<string,string>>
         self.PresetLayerParamsDumpRequest = {}
         self.PresetLayerParamsDumpRequest[0] = { "1120aaaabbbbcccc", "Mask" }
         self.PresetLayerParamsDumpRequest[1] = { "11", "Command" }
@@ -992,6 +1115,7 @@ function MessageSpecs:new()
         self.PresetLayerParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetLayerParamsDumpRequest[4] = { "bbbb", "Layer Number" }
         self.PresetLayerParamsDumpRequest[5] = { "cccc", "Preset ROM ID" }
+        ---@type table<table<string,string>>
         self.PresetLayerGeneralParamsDumpRequest = {}
         self.PresetLayerGeneralParamsDumpRequest[0] = { "1121aaaabbbbcccc", "Mask" }
         self.PresetLayerGeneralParamsDumpRequest[1] = { "11", "Command" }
@@ -999,6 +1123,7 @@ function MessageSpecs:new()
         self.PresetLayerGeneralParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetLayerGeneralParamsDumpRequest[4] = { "bbbb", "Layer Number" }
         self.PresetLayerGeneralParamsDumpRequest[5] = { "cccc", "Preset ROM ID" }
+        ---@type table<table<string,string>>
         self.PresetLayerFilterParamsDumpRequest = {}
         self.PresetLayerFilterParamsDumpRequest[0] = { "1122aaaabbbbcccc", "Mask" }
         self.PresetLayerFilterParamsDumpRequest[1] = { "11", "Command" }
@@ -1006,6 +1131,7 @@ function MessageSpecs:new()
         self.PresetLayerFilterParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetLayerFilterParamsDumpRequest[4] = { "bbbb", "Layer Number" }
         self.PresetLayerFilterParamsDumpRequest[5] = { "cccc", "Preset ROM ID" }
+        ---@type table<table<string,string>>
         self.PresetLayerLFOParamsDumpRequest = {}
         self.PresetLayerLFOParamsDumpRequest[0] = { "1123aaaabbbbcccc", "Mask" }
         self.PresetLayerLFOParamsDumpRequest[1] = { "11", "Command" }
@@ -1013,6 +1139,7 @@ function MessageSpecs:new()
         self.PresetLayerLFOParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetLayerLFOParamsDumpRequest[4] = { "bbbb", "Layer Number" }
         self.PresetLayerLFOParamsDumpRequest[5] = { "cccc", "Preset ROM ID" }
+        ---@type table<table<string,string>>
         self.PresetLayerEnvelopeParamsDumpRequest = {}
         self.PresetLayerEnvelopeParamsDumpRequest[0] = { "1124aaaabbbbcccc", "Mask" }
         self.PresetLayerEnvelopeParamsDumpRequest[1] = { "11", "Command" }
@@ -1020,6 +1147,7 @@ function MessageSpecs:new()
         self.PresetLayerEnvelopeParamsDumpRequest[3] = { "aaaa", "Preset Number" }
         self.PresetLayerEnvelopeParamsDumpRequest[4] = { "bbbb", "Layer Number" }
         self.PresetLayerEnvelopeParamsDumpRequest[5] = { "cccc", "Preset ROM ID" }
+        ---@type table<table<string,string>>
         self.PresetLayerCordParamsDumpRequest = {}
         self.PresetLayerCordParamsDumpRequest[0] = { "1125aaaabbbbcccc", "Mask" }
         self.PresetLayerCordParamsDumpRequest[1] = { "11", "Command" }
@@ -1030,6 +1158,7 @@ function MessageSpecs:new()
     end
 
     do -- arpeggiator
+        ---@type table<table<string,string>>
         self.ArpeggiatorPatternDumpResponse = {}
         self.ArpeggiatorPatternDumpResponse[0] = { "18aaaabbbbccccddddAAAAAAAAAAAA[256]", "Mask" }
         self.ArpeggiatorPatternDumpResponse[1] = { "18", "Command" }
@@ -1039,15 +1168,18 @@ function MessageSpecs:new()
         self.ArpeggiatorPatternDumpResponse[5] = { "dddd", "Arpeggiator Pattern Loop Point (LSB first)" }
         self.ArpeggiatorPatternDumpResponse[6] = { "AAAAAAAAAAAA", "12 ASCII Character Pattern Name" }
         self.ArpeggiatorPatternDumpResponse[7] = { "[256]", "DATA" }
+        ---@type table<table<string,string>>
         self.ArpeggiatorPatternDumpRequest = {}
         self.ArpeggiatorPatternDumpRequest[0] = { "19aaaabbbb", "Mask" }
         self.ArpeggiatorPatternDumpRequest[1] = { "19", "Command" }
         self.ArpeggiatorPatternDumpRequest[2] = { "aaaa", "Arpeggiator Pattern Number (LSB first)" }
         self.ArpeggiatorPatternDumpRequest[3] = { "bbbb", "Arpeggiator Pattern ROM ID" }
+        ---@type table<table<string,string>>
         self.LCDScreenDumpResponseP2KAudity2K = {}
     end
 
     do -- LCD
+        ---@type table<table<string,string>>
         self.LCDScreenDumpResponseP2KAudity2K[0] = { "1A01aabbccMAP[48]", "Mask" }
         self.LCDScreenDumpResponseP2KAudity2K[1] = { "1A", "Command" }
         self.LCDScreenDumpResponseP2KAudity2K[2] = { "01", "SubCommand" }
@@ -1055,10 +1187,12 @@ function MessageSpecs:new()
         self.LCDScreenDumpResponseP2KAudity2K[4] = { "bb", "Number of Characters per Row (24)" }
         self.LCDScreenDumpResponseP2KAudity2K[5] = { "cc", "Number of Custom Characters per Screen (8)" }
         self.LCDScreenDumpResponseP2KAudity2K[6] = { "MAP[48]", "" }
+        ---@type table<table<string,string>>
         self.LCDScreenDumpRequestP2KAudity2K = {}
         self.LCDScreenDumpRequestP2KAudity2K[0] = { "1B01", "Mask" }
         self.LCDScreenDumpRequestP2KAudity2K[1] = { "1B", "Command" }
         self.LCDScreenDumpRequestP2KAudity2K[2] = { "01", "SubCommand" }
+        ---@type table<table<string,string>>
         self.LCDScreenCharacterPalletResponse = {}
         self.LCDScreenCharacterPalletResponse[0] = { "1A02aabb[MAPS]", "Mask" }
         self.LCDScreenCharacterPalletResponse[1] = { "1A", "Command" }
@@ -1066,6 +1200,7 @@ function MessageSpecs:new()
         self.LCDScreenCharacterPalletResponse[3] = { "aa", "Number of total Custom Characters in the Palette" }
         self.LCDScreenCharacterPalletResponse[4] = { "bb", "8 x Number of Custom Characters(13)=104 Bytes" }
         self.LCDScreenCharacterPalletResponse[5] = { "[MAPS]", "" }
+        ---@type table<table<string,string>>
         self.LCDScreenCharacterPalletRequest = {}
         self.LCDScreenCharacterPalletRequest[0] = { "1B02", "Mask" }
         self.LCDScreenCharacterPalletRequest[1] = { "1B", "Command" }
@@ -1073,6 +1208,7 @@ function MessageSpecs:new()
     end
 
     do -- copy/paste objects
+        ---@type table<table<string,string>>
         self.CopyPresetRequest = {}
         self.CopyPresetRequest[0] = { "20aaaabbbbcccc", "Mask" }
         self.CopyPresetRequest[1] = { "20", "Command" }
@@ -1080,32 +1216,45 @@ function MessageSpecs:new()
         self.CopyPresetRequest[3] = { "bbbb",
             "Destination Preset number (RAM only) LSB firstPreset Number of -1 bis the Edit Buffer." }
         self.CopyPresetRequest[4] = { "cccc", "Source ROM ID" }
+        ---@type table<table<string,string>>
         self.CopyPresetCommonParametersRequest = {}
         self.CopyPresetCommonParametersRequest[0] = { "21aaaabbbbcccc", "Mask" }
+        ---@type table<table<string,string>>
         self.CopyArpParametersRequest = {}
         self.CopyArpParametersRequest[0] = { "22aaaabbbbcccc", "Mask" }
+        ---@type table<table<string,string>>
         self.CopyEffectsParametersRequestMasterorPreset = {}
         self.CopyEffectsParametersRequestMasterorPreset[0] = { "23aaaabbbbcccc", "Mask" }
+        ---@type table<table<string,string>>
         self.CopyPresetLinkParametersRequest = {}
         self.CopyPresetLinkParametersRequest[0] = { "24aaaabbbbcccc", "Mask" }
+        ---@type table<table<string,string>>
         self.CopyPresetLayerRequest = {}
         self.CopyPresetLayerRequest[0] = { "25aaaabbbbcccc", "Mask" }
+        ---@type table<table<string,string>>
         self.CopyPresetLayerCommonParametersRequest = {}
         self.CopyPresetLayerCommonParametersRequest[0] = { "26aaaabbbbcccc", "Mask" }
+        ---@type table<table<string,string>>
         self.CopyPresetLayerFilterParametersRequest = {}
         self.CopyPresetLayerFilterParametersRequest[0] = { "27aaaabbbbcccc", "Mask" }
+        ---@type table<table<string,string>>
         self.CopyPresetLayerLFOParametersRequest = {}
         self.CopyPresetLayerLFOParametersRequest[0] = { "28aaaabbbbcccc", "Mask" }
         self.CopyPresetLayerEnvelopeParametersRequest = {}
         self.CopyPresetLayerEnvelopeParametersRequest[0] = { "29aaaabbbbcccc", "Mask" }
+        ---@type table<table<string,string>>
         self.CopyPresetLayerPatchCordsRequest = {}
         self.CopyPresetLayerPatchCordsRequest[0] = { "2Aaaaabbbbcccc", "Mask" }
+        ---@type table<table<string,string>>
         self.CopyArpPatternRequest = {}
         self.CopyArpPatternRequest[0] = { "2Baaaabbbbcccc", "Mask" }
+        ---@type table<table<string,string>>
         self.CopyMasterSetupRequest = {}
         self.CopyMasterSetupRequest[0] = { "2Caaaabbbb", "Mask" }
+        ---@type table<table<string,string>>
         self.CopyPatternRequest = {}
         self.CopyPatternRequest[0] = { "2Daaaabbbbcccc", "Mask" }
+        ---@type table<table<string,string>>
         self.CopySongRequest = {}
         self.CopySongRequest[0] = { "2Eaaaabbbbcccc", "Mask" }
     end
@@ -1113,10 +1262,9 @@ function MessageSpecs:new()
     return self
 end
 
----@type table
+
 local MessageContracts = {}
 ---tables holding positions of elements in sysex messages
----@return table MessageContracts an instance of this MessageContract table
 function MessageContracts:new()
     setmetatable({}, self)
     self.__index = self
@@ -1137,6 +1285,7 @@ function MessageContracts:new()
     }
 
     do -- Setup Dump By Position
+        ---@type table<table<integer,integer>>
         self.SetupDump = {}
         self.SetupDump[0] = { 1, 1 }
         self.SetupDump[2] = { 2, 3 }
@@ -1557,38 +1706,866 @@ function MessageContracts:new()
         self.SetupDump[138] = { 816, 817 }
     end
 
+
+    do -- Preset Dump By Position
+        self.PresetDump = {}
+        self.PresetDump[899] = {1,1}
+        self.PresetDump[900] = {2,2}
+        self.PresetDump[901] = {3,3}
+        self.PresetDump[902] = {4,4}
+        self.PresetDump[903] = {5,5}
+        self.PresetDump[904] = {6,6}
+        self.PresetDump[905] = {7,7}
+        self.PresetDump[906] = {8,8}
+        self.PresetDump[907] = {9,9}
+        self.PresetDump[908] = {10,10}
+        self.PresetDump[909] = {11,11}
+        self.PresetDump[910] = {12,12}
+        self.PresetDump[911] = {13,13}
+        self.PresetDump[912] = {14,14}
+        self.PresetDump[913] = {15,15}
+        self.PresetDump[914] = {16,16}
+        self.PresetDump[915] = {17,18}
+        self.PresetDump[916] = {19,20}
+        self.PresetDump[917] = {21,22}
+        self.PresetDump[918] = {23,24}
+        self.PresetDump[919] = {25,26}
+        self.PresetDump[920] = {27,28}
+        self.PresetDump[921] = {29,30}
+        self.PresetDump[922] = {31,32}
+        self.PresetDump[923] = {33,34}
+        self.PresetDump[924] = {35,36}
+        self.PresetDump[925] = {37,38}
+        self.PresetDump[926] = {39,40}
+        self.PresetDump[927] = {41,42}
+        self.PresetDump[928] = {43,44}
+        self.PresetDump[929] = {45,46}
+        self.PresetDump[930] = {47,48}
+        self.PresetDump[931] = {49,50}
+        self.PresetDump[932] = {51,52}
+        self.PresetDump[933] = {53,54}
+        self.PresetDump[934] = {55,56}
+        self.PresetDump[935] = {57,58}
+        self.PresetDump[936] = {59,60}
+        self.PresetDump[937] = {61,62}
+        self.PresetDump[938] = {63,64}
+        self.PresetDump[939] = {65,66}
+        self.PresetDump[940] = {67,68}
+        self.PresetDump[941] = {69,70}
+        self.PresetDump[942] = {71,72}
+        self.PresetDump[943] = {73,74}
+        self.PresetDump[944] = {75,76}
+        self.PresetDump[945] = {77,78}
+        self.PresetDump[946] = {79,80}
+        self.PresetDump[947] = {81,82}
+        self.PresetDump[948] = {83,84}
+        self.PresetDump[949] = {85,86}
+        self.PresetDump[950] = {87,88}
+        self.PresetDump[951] = {89,90}
+        self.PresetDump[952] = {91,92}
+        self.PresetDump[953] = {93,94}
+        self.PresetDump[954] = {95,96}
+        self.PresetDump[955] = {97,98}
+        self.PresetDump[956] = {99,100}
+        self.PresetDump[957] = {101,102}
+        self.PresetDump[958] = {103,104}
+        self.PresetDump[959] = {105,106}
+        self.PresetDump[960] = {107,108}
+        self.PresetDump[961] = {109,110}
+        self.PresetDump[962] = {111,112}
+        self.PresetDump[963] = {113,114}
+        self.PresetDump[964] = {115,116}
+        self.PresetDump[965] = {117,118}
+        self.PresetDump[966] = {119,120}
+        self.PresetDump[967] = {121,122}
+        self.PresetDump[968] = {123,124}
+        self.PresetDump[969] = {125,126}
+        self.PresetDump[970] = {127,128}
+        self.PresetDump[1025] = {129,130}
+        self.PresetDump[1026] = {131,132}
+        self.PresetDump[1027] = {133,134}
+        self.PresetDump[1028] = {135,136}
+        self.PresetDump[1029] = {137,138}
+        self.PresetDump[1030] = {139,140}
+        self.PresetDump[1031] = {141,142}
+        self.PresetDump[1032] = {143,144}
+        self.PresetDump[1033] = {145,146}
+        self.PresetDump[1034] = {147,148}
+        self.PresetDump[1035] = {149,150}
+        self.PresetDump[1036] = {151,152}
+        self.PresetDump[1037] = {153,154}
+        self.PresetDump[1038] = {155,156}
+        self.PresetDump[1039] = {157,158}
+        self.PresetDump[1040] = {159,160}
+        self.PresetDump[1041] = {161,162}
+        self.PresetDump[1042] = {163,164}
+        self.PresetDump[1043] = {165,166}
+        self.PresetDump[1153] = {167,168}
+        self.PresetDump[1154] = {169,170}
+        self.PresetDump[1155] = {171,172}
+        self.PresetDump[1156] = {173,174}
+        self.PresetDump[1157] = {175,176}
+        self.PresetDump[1158] = {177,178}
+        self.PresetDump[1159] = {179,180}
+        self.PresetDump[1160] = {181,182}
+        self.PresetDump[1161] = {183,184}
+        self.PresetDump[1162] = {185,186}
+        self.PresetDump[1163] = {187,188}
+        self.PresetDump[1164] = {189,190}
+        self.PresetDump[1165] = {191,192}
+        self.PresetDump[1166] = {193,194}
+        self.PresetDump[1167] = {195,196}
+        self.PresetDump[1168] = {197,198}
+        self.PresetDump[1281] = {199,200}
+        self.PresetDump[1282] = {201,202}
+        self.PresetDump[1283] = {203,204}
+        self.PresetDump[1284] = {205,206}
+        self.PresetDump[1285] = {207,208}
+        self.PresetDump[1286] = {209,210}
+        self.PresetDump[1287] = {211,212}
+        self.PresetDump[1288] = {213,214}
+        self.PresetDump[1289] = {215,216}
+        self.PresetDump[1290] = {217,218}
+        self.PresetDump[1291] = {219,220}
+        self.PresetDump[1292] = {221,222}
+        self.PresetDump[1293] = {223,224}
+        self.PresetDump[1294] = {225,226}
+        self.PresetDump[1295] = {227,228}
+        self.PresetDump[1296] = {229,230}
+        self.PresetDump[1297] = {231,232}
+        self.PresetDump[1298] = {233,234}
+        self.PresetDump[1299] = {235,236}
+        self.PresetDump[1300] = {237,238}
+        self.PresetDump[14091] = {239,240}
+        self.PresetDump[14101] = {241,242}
+        self.PresetDump[14111] = {243,244}
+        self.PresetDump[14121] = {245,246}
+        self.PresetDump[14131] = {247,248}
+        self.PresetDump[14141] = {249,250}
+        self.PresetDump[14151] = {251,252}
+        self.PresetDump[14161] = {253,254}
+        self.PresetDump[14171] = {255,256}
+        self.PresetDump[14181] = {257,258}
+        self.PresetDump[14191] = {259,260}
+        self.PresetDump[14201] = {261,262}
+        self.PresetDump[14211] = {263,264}
+        self.PresetDump[14221] = {265,266}
+        self.PresetDump[14231] = {267,268}
+        self.PresetDump[14241] = {269,270}
+        self.PresetDump[14251] = {271,272}
+        self.PresetDump[14261] = {273,274}
+        self.PresetDump[14271] = {275,276}
+        self.PresetDump[14281] = {277,278}
+        self.PresetDump[14291] = {279,280}
+        self.PresetDump[14301] = {281,282}
+        self.PresetDump[14311] = {283,284}
+        self.PresetDump[14321] = {285,286}
+        self.PresetDump[14331] = {287,288}
+        self.PresetDump[14341] = {289,290}
+        self.PresetDump[14351] = {291,292}
+        self.PresetDump[14361] = {293,294}
+        self.PresetDump[14371] = {295,296}
+        self.PresetDump[14381] = {297,298}
+        self.PresetDump[14391] = {299,300}
+        self.PresetDump[15371] = {301,302}
+        self.PresetDump[15381] = {303,304}
+        self.PresetDump[15391] = {305,306}
+        self.PresetDump[16651] = {307,308}
+        self.PresetDump[16661] = {309,310}
+        self.PresetDump[16671] = {311,312}
+        self.PresetDump[16681] = {313,314}
+        self.PresetDump[16691] = {315,316}
+        self.PresetDump[16701] = {317,318}
+        self.PresetDump[16711] = {319,320}
+        self.PresetDump[16721] = {321,322}
+        self.PresetDump[16731] = {323,324}
+        self.PresetDump[16741] = {325,326}
+        self.PresetDump[17931] = {327,328}
+        self.PresetDump[17941] = {329,330}
+        self.PresetDump[17951] = {331,332}
+        self.PresetDump[17961] = {333,334}
+        self.PresetDump[17971] = {335,336}
+        self.PresetDump[17981] = {337,338}
+        self.PresetDump[17991] = {339,340}
+        self.PresetDump[18001] = {341,342}
+        self.PresetDump[18011] = {343,344}
+        self.PresetDump[18021] = {345,346}
+        self.PresetDump[18031] = {347,348}
+        self.PresetDump[18041] = {349,350}
+        self.PresetDump[18051] = {351,352}
+        self.PresetDump[18061] = {353,354}
+        self.PresetDump[18071] = {355,356}
+        self.PresetDump[18081] = {357,358}
+        self.PresetDump[18091] = {359,360}
+        self.PresetDump[18101] = {361,362}
+        self.PresetDump[18111] = {363,364}
+        self.PresetDump[18121] = {365,366}
+        self.PresetDump[18131] = {367,368}
+        self.PresetDump[18141] = {369,370}
+        self.PresetDump[18151] = {371,372}
+        self.PresetDump[18161] = {373,374}
+        self.PresetDump[18171] = {375,376}
+        self.PresetDump[18181] = {377,378}
+        self.PresetDump[18191] = {379,380}
+        self.PresetDump[18201] = {381,382}
+        self.PresetDump[18211] = {383,384}
+        self.PresetDump[18221] = {385,386}
+        self.PresetDump[18231] = {387,388}
+        self.PresetDump[18241] = {389,390}
+        self.PresetDump[18251] = {391,392}
+        self.PresetDump[18261] = {393,394}
+        self.PresetDump[18271] = {395,396}
+        self.PresetDump[18281] = {397,398}
+        self.PresetDump[18291] = {399,400}
+        self.PresetDump[18301] = {401,402}
+        self.PresetDump[18311] = {403,404}
+        self.PresetDump[18331] = {405,406}
+        self.PresetDump[18341] = {407,408}
+        self.PresetDump[19201] = {409,410}
+        self.PresetDump[19211] = {411,412}
+        self.PresetDump[19221] = {413,414}
+        self.PresetDump[19231] = {415,416}
+        self.PresetDump[19241] = {417,418}
+        self.PresetDump[19251] = {419,420}
+        self.PresetDump[19261] = {421,422}
+        self.PresetDump[19271] = {423,424}
+        self.PresetDump[19281] = {425,426}
+        self.PresetDump[19291] = {427,428}
+        self.PresetDump[19301] = {429,430}
+        self.PresetDump[19311] = {431,432}
+        self.PresetDump[19321] = {433,434}
+        self.PresetDump[19331] = {435,436}
+        self.PresetDump[19341] = {437,438}
+        self.PresetDump[19351] = {439,440}
+        self.PresetDump[19361] = {441,442}
+        self.PresetDump[19371] = {443,444}
+        self.PresetDump[19381] = {445,446}
+        self.PresetDump[19391] = {447,448}
+        self.PresetDump[19401] = {449,450}
+        self.PresetDump[19411] = {451,452}
+        self.PresetDump[19421] = {453,454}
+        self.PresetDump[19431] = {455,456}
+        self.PresetDump[19441] = {457,458}
+        self.PresetDump[19451] = {459,460}
+        self.PresetDump[19461] = {461,462}
+        self.PresetDump[19471] = {463,464}
+        self.PresetDump[19481] = {465,466}
+        self.PresetDump[19491] = {467,468}
+        self.PresetDump[19501] = {469,470}
+        self.PresetDump[19511] = {471,472}
+        self.PresetDump[19521] = {473,474}
+        self.PresetDump[19531] = {475,476}
+        self.PresetDump[19541] = {477,478}
+        self.PresetDump[19551] = {479,480}
+        self.PresetDump[19561] = {481,482}
+        self.PresetDump[19571] = {483,484}
+        self.PresetDump[19581] = {485,486}
+        self.PresetDump[19591] = {487,488}
+        self.PresetDump[19601] = {489,490}
+        self.PresetDump[19611] = {491,492}
+        self.PresetDump[19621] = {493,494}
+        self.PresetDump[19631] = {495,496}
+        self.PresetDump[19641] = {497,498}
+        self.PresetDump[19651] = {499,500}
+        self.PresetDump[19661] = {501,502}
+        self.PresetDump[19671] = {503,504}
+        self.PresetDump[19681] = {505,506}
+        self.PresetDump[19691] = {507,508}
+        self.PresetDump[19701] = {509,510}
+        self.PresetDump[19711] = {511,512}
+        self.PresetDump[19721] = {513,514}
+        self.PresetDump[19731] = {515,516}
+        self.PresetDump[19741] = {517,518}
+        self.PresetDump[19751] = {519,520}
+        self.PresetDump[19761] = {521,522}
+        self.PresetDump[19771] = {523,524}
+        self.PresetDump[19781] = {525,526}
+        self.PresetDump[19791] = {527,528}
+        self.PresetDump[19801] = {529,530}
+        self.PresetDump[19811] = {531,532}
+        self.PresetDump[19821] = {533,534}
+        self.PresetDump[19831] = {535,536}
+        self.PresetDump[19841] = {537,538}
+        self.PresetDump[19851] = {539,540}
+        self.PresetDump[19861] = {541,542}
+        self.PresetDump[19871] = {543,544}
+        self.PresetDump[19881] = {545,546}
+        self.PresetDump[19891] = {547,548}
+        self.PresetDump[19901] = {549,550}
+        self.PresetDump[19911] = {551,552}
+        self.PresetDump[19921] = {553,554}
+        self.PresetDump[14092] = {555,556}
+        self.PresetDump[14102] = {557,558}
+        self.PresetDump[14112] = {559,560}
+        self.PresetDump[14122] = {561,562}
+        self.PresetDump[14132] = {563,564}
+        self.PresetDump[14142] = {565,566}
+        self.PresetDump[14152] = {567,568}
+        self.PresetDump[14162] = {569,570}
+        self.PresetDump[14172] = {571,572}
+        self.PresetDump[14182] = {573,574}
+        self.PresetDump[14192] = {575,576}
+        self.PresetDump[14202] = {577,578}
+        self.PresetDump[14212] = {579,580}
+        self.PresetDump[14222] = {581,582}
+        self.PresetDump[14232] = {583,584}
+        self.PresetDump[14242] = {585,586}
+        self.PresetDump[14252] = {587,588}
+        self.PresetDump[14262] = {589,590}
+        self.PresetDump[14272] = {591,592}
+        self.PresetDump[14282] = {593,594}
+        self.PresetDump[14292] = {595,596}
+        self.PresetDump[14302] = {597,598}
+        self.PresetDump[14312] = {599,600}
+        self.PresetDump[14322] = {601,602}
+        self.PresetDump[14332] = {603,604}
+        self.PresetDump[14342] = {605,606}
+        self.PresetDump[14352] = {607,608}
+        self.PresetDump[14362] = {609,610}
+        self.PresetDump[14372] = {611,612}
+        self.PresetDump[14382] = {613,614}
+        self.PresetDump[14392] = {615,616}
+        self.PresetDump[15372] = {617,618}
+        self.PresetDump[15382] = {619,620}
+        self.PresetDump[15392] = {621,622}
+        self.PresetDump[16652] = {623,624}
+        self.PresetDump[16662] = {625,626}
+        self.PresetDump[16672] = {627,628}
+        self.PresetDump[16682] = {629,630}
+        self.PresetDump[16692] = {631,632}
+        self.PresetDump[16702] = {633,634}
+        self.PresetDump[16712] = {635,636}
+        self.PresetDump[16722] = {637,638}
+        self.PresetDump[16732] = {639,640}
+        self.PresetDump[16742] = {641,642}
+        self.PresetDump[17932] = {643,644}
+        self.PresetDump[17942] = {645,646}
+        self.PresetDump[17952] = {647,648}
+        self.PresetDump[17962] = {649,650}
+        self.PresetDump[17972] = {651,652}
+        self.PresetDump[17982] = {653,654}
+        self.PresetDump[17992] = {655,656}
+        self.PresetDump[18002] = {657,658}
+        self.PresetDump[18012] = {659,660}
+        self.PresetDump[18022] = {661,662}
+        self.PresetDump[18032] = {663,664}
+        self.PresetDump[18042] = {665,666}
+        self.PresetDump[18052] = {667,668}
+        self.PresetDump[18062] = {669,670}
+        self.PresetDump[18072] = {671,672}
+        self.PresetDump[18082] = {673,674}
+        self.PresetDump[18092] = {675,676}
+        self.PresetDump[18102] = {677,678}
+        self.PresetDump[18112] = {679,680}
+        self.PresetDump[18122] = {681,682}
+        self.PresetDump[18132] = {683,684}
+        self.PresetDump[18142] = {685,686}
+        self.PresetDump[18152] = {687,688}
+        self.PresetDump[18162] = {689,690}
+        self.PresetDump[18172] = {691,692}
+        self.PresetDump[18182] = {693,694}
+        self.PresetDump[18192] = {695,696}
+        self.PresetDump[18202] = {697,698}
+        self.PresetDump[18212] = {699,700}
+        self.PresetDump[18222] = {701,702}
+        self.PresetDump[18232] = {703,704}
+        self.PresetDump[18242] = {705,706}
+        self.PresetDump[18252] = {707,708}
+        self.PresetDump[18262] = {709,710}
+        self.PresetDump[18272] = {711,712}
+        self.PresetDump[18282] = {713,714}
+        self.PresetDump[18292] = {715,716}
+        self.PresetDump[18302] = {717,718}
+        self.PresetDump[18312] = {719,720}
+        self.PresetDump[18332] = {721,722}
+        self.PresetDump[18342] = {723,724}
+        self.PresetDump[19202] = {725,726}
+        self.PresetDump[19212] = {727,728}
+        self.PresetDump[19222] = {729,730}
+        self.PresetDump[19232] = {731,732}
+        self.PresetDump[19242] = {733,734}
+        self.PresetDump[19252] = {735,736}
+        self.PresetDump[19262] = {737,738}
+        self.PresetDump[19272] = {739,740}
+        self.PresetDump[19282] = {741,742}
+        self.PresetDump[19292] = {743,744}
+        self.PresetDump[19302] = {745,746}
+        self.PresetDump[19312] = {747,748}
+        self.PresetDump[19322] = {749,750}
+        self.PresetDump[19332] = {751,752}
+        self.PresetDump[19342] = {753,754}
+        self.PresetDump[19352] = {755,756}
+        self.PresetDump[19362] = {757,758}
+        self.PresetDump[19372] = {759,760}
+        self.PresetDump[19382] = {761,762}
+        self.PresetDump[19392] = {763,764}
+        self.PresetDump[19402] = {765,766}
+        self.PresetDump[19412] = {767,768}
+        self.PresetDump[19422] = {769,770}
+        self.PresetDump[19432] = {771,772}
+        self.PresetDump[19442] = {773,774}
+        self.PresetDump[19452] = {775,776}
+        self.PresetDump[19462] = {777,778}
+        self.PresetDump[19472] = {779,780}
+        self.PresetDump[19482] = {781,782}
+        self.PresetDump[19492] = {783,784}
+        self.PresetDump[19502] = {785,786}
+        self.PresetDump[19512] = {787,788}
+        self.PresetDump[19522] = {789,790}
+        self.PresetDump[19532] = {791,792}
+        self.PresetDump[19542] = {793,794}
+        self.PresetDump[19552] = {795,796}
+        self.PresetDump[19562] = {797,798}
+        self.PresetDump[19572] = {799,800}
+        self.PresetDump[19582] = {801,802}
+        self.PresetDump[19592] = {803,804}
+        self.PresetDump[19602] = {805,806}
+        self.PresetDump[19612] = {807,808}
+        self.PresetDump[19622] = {809,810}
+        self.PresetDump[19632] = {811,812}
+        self.PresetDump[19642] = {813,814}
+        self.PresetDump[19652] = {815,816}
+        self.PresetDump[19662] = {817,818}
+        self.PresetDump[19672] = {819,820}
+        self.PresetDump[19682] = {821,822}
+        self.PresetDump[19692] = {823,824}
+        self.PresetDump[19702] = {825,826}
+        self.PresetDump[19712] = {827,828}
+        self.PresetDump[19722] = {829,830}
+        self.PresetDump[19732] = {831,832}
+        self.PresetDump[19742] = {833,834}
+        self.PresetDump[19752] = {835,836}
+        self.PresetDump[19762] = {837,838}
+        self.PresetDump[19772] = {839,840}
+        self.PresetDump[19782] = {841,842}
+        self.PresetDump[19792] = {843,844}
+        self.PresetDump[19802] = {845,846}
+        self.PresetDump[19812] = {847,848}
+        self.PresetDump[19822] = {849,850}
+        self.PresetDump[19832] = {851,852}
+        self.PresetDump[19842] = {853,854}
+        self.PresetDump[19852] = {855,856}
+        self.PresetDump[19862] = {857,858}
+        self.PresetDump[19872] = {859,860}
+        self.PresetDump[19882] = {861,862}
+        self.PresetDump[19892] = {863,864}
+        self.PresetDump[19902] = {865,866}
+        self.PresetDump[19912] = {867,868}
+        self.PresetDump[19922] = {869,870}
+        self.PresetDump[14093] = {871,872}
+        self.PresetDump[14103] = {873,874}
+        self.PresetDump[14113] = {875,876}
+        self.PresetDump[14123] = {877,878}
+        self.PresetDump[14133] = {879,880}
+        self.PresetDump[14143] = {881,882}
+        self.PresetDump[14153] = {883,884}
+        self.PresetDump[14163] = {885,886}
+        self.PresetDump[14173] = {887,888}
+        self.PresetDump[14183] = {889,890}
+        self.PresetDump[14193] = {891,892}
+        self.PresetDump[14203] = {893,894}
+        self.PresetDump[14213] = {895,896}
+        self.PresetDump[14223] = {897,898}
+        self.PresetDump[14233] = {899,900}
+        self.PresetDump[14243] = {901,902}
+        self.PresetDump[14253] = {903,904}
+        self.PresetDump[14263] = {905,906}
+        self.PresetDump[14273] = {907,908}
+        self.PresetDump[14283] = {909,910}
+        self.PresetDump[14293] = {911,912}
+        self.PresetDump[14303] = {913,914}
+        self.PresetDump[14313] = {915,916}
+        self.PresetDump[14323] = {917,918}
+        self.PresetDump[14333] = {919,920}
+        self.PresetDump[14343] = {921,922}
+        self.PresetDump[14353] = {923,924}
+        self.PresetDump[14363] = {925,926}
+        self.PresetDump[14373] = {927,928}
+        self.PresetDump[14383] = {929,930}
+        self.PresetDump[14393] = {931,932}
+        self.PresetDump[15373] = {933,934}
+        self.PresetDump[15383] = {935,936}
+        self.PresetDump[15393] = {937,938}
+        self.PresetDump[16653] = {939,940}
+        self.PresetDump[16663] = {941,942}
+        self.PresetDump[16673] = {943,944}
+        self.PresetDump[16683] = {945,946}
+        self.PresetDump[16693] = {947,948}
+        self.PresetDump[16703] = {949,950}
+        self.PresetDump[16713] = {951,952}
+        self.PresetDump[16723] = {953,954}
+        self.PresetDump[16733] = {955,956}
+        self.PresetDump[16743] = {957,958}
+        self.PresetDump[17933] = {959,960}
+        self.PresetDump[17943] = {961,962}
+        self.PresetDump[17953] = {963,964}
+        self.PresetDump[17963] = {965,966}
+        self.PresetDump[17973] = {967,968}
+        self.PresetDump[17983] = {969,970}
+        self.PresetDump[17993] = {971,972}
+        self.PresetDump[18003] = {973,974}
+        self.PresetDump[18013] = {975,976}
+        self.PresetDump[18023] = {977,978}
+        self.PresetDump[18033] = {979,980}
+        self.PresetDump[18043] = {981,982}
+        self.PresetDump[18053] = {983,984}
+        self.PresetDump[18063] = {985,986}
+        self.PresetDump[18073] = {987,988}
+        self.PresetDump[18083] = {989,990}
+        self.PresetDump[18093] = {991,992}
+        self.PresetDump[18103] = {993,994}
+        self.PresetDump[18113] = {995,996}
+        self.PresetDump[18123] = {997,998}
+        self.PresetDump[18133] = {999,1000}
+        self.PresetDump[18143] = {1001,1002}
+        self.PresetDump[18153] = {1003,1004}
+        self.PresetDump[18163] = {1005,1006}
+        self.PresetDump[18173] = {1007,1008}
+        self.PresetDump[18183] = {1009,1010}
+        self.PresetDump[18193] = {1011,1012}
+        self.PresetDump[18203] = {1013,1014}
+        self.PresetDump[18213] = {1015,1016}
+        self.PresetDump[18223] = {1017,1018}
+        self.PresetDump[18233] = {1019,1020}
+        self.PresetDump[18243] = {1021,1022}
+        self.PresetDump[18253] = {1023,1024}
+        self.PresetDump[18263] = {1025,1026}
+        self.PresetDump[18273] = {1027,1028}
+        self.PresetDump[18283] = {1029,1030}
+        self.PresetDump[18293] = {1031,1032}
+        self.PresetDump[18303] = {1033,1034}
+        self.PresetDump[18313] = {1035,1036}
+        self.PresetDump[18333] = {1037,1038}
+        self.PresetDump[18343] = {1039,1040}
+        self.PresetDump[19203] = {1041,1042}
+        self.PresetDump[19213] = {1043,1044}
+        self.PresetDump[19223] = {1045,1046}
+        self.PresetDump[19233] = {1047,1048}
+        self.PresetDump[19243] = {1049,1050}
+        self.PresetDump[19253] = {1051,1052}
+        self.PresetDump[19263] = {1053,1054}
+        self.PresetDump[19273] = {1055,1056}
+        self.PresetDump[19283] = {1057,1058}
+        self.PresetDump[19293] = {1059,1060}
+        self.PresetDump[19303] = {1061,1062}
+        self.PresetDump[19313] = {1063,1064}
+        self.PresetDump[19323] = {1065,1066}
+        self.PresetDump[19333] = {1067,1068}
+        self.PresetDump[19343] = {1069,1070}
+        self.PresetDump[19353] = {1071,1072}
+        self.PresetDump[19363] = {1073,1074}
+        self.PresetDump[19373] = {1075,1076}
+        self.PresetDump[19383] = {1077,1078}
+        self.PresetDump[19393] = {1079,1080}
+        self.PresetDump[19403] = {1081,1082}
+        self.PresetDump[19413] = {1083,1084}
+        self.PresetDump[19423] = {1085,1086}
+        self.PresetDump[19433] = {1087,1088}
+        self.PresetDump[19443] = {1089,1090}
+        self.PresetDump[19453] = {1091,1092}
+        self.PresetDump[19463] = {1093,1094}
+        self.PresetDump[19473] = {1095,1096}
+        self.PresetDump[19483] = {1097,1098}
+        self.PresetDump[19493] = {1099,1100}
+        self.PresetDump[19503] = {1101,1102}
+        self.PresetDump[19513] = {1103,1104}
+        self.PresetDump[19523] = {1105,1106}
+        self.PresetDump[19533] = {1107,1108}
+        self.PresetDump[19543] = {1109,1110}
+        self.PresetDump[19553] = {1111,1112}
+        self.PresetDump[19563] = {1113,1114}
+        self.PresetDump[19573] = {1115,1116}
+        self.PresetDump[19583] = {1117,1118}
+        self.PresetDump[19593] = {1119,1120}
+        self.PresetDump[19603] = {1121,1122}
+        self.PresetDump[19613] = {1123,1124}
+        self.PresetDump[19623] = {1125,1126}
+        self.PresetDump[19633] = {1127,1128}
+        self.PresetDump[19643] = {1129,1130}
+        self.PresetDump[19653] = {1131,1132}
+        self.PresetDump[19663] = {1133,1134}
+        self.PresetDump[19673] = {1135,1136}
+        self.PresetDump[19683] = {1137,1138}
+        self.PresetDump[19693] = {1139,1140}
+        self.PresetDump[19703] = {1141,1142}
+        self.PresetDump[19713] = {1143,1144}
+        self.PresetDump[19723] = {1145,1146}
+        self.PresetDump[19733] = {1147,1148}
+        self.PresetDump[19743] = {1149,1150}
+        self.PresetDump[19753] = {1151,1152}
+        self.PresetDump[19763] = {1153,1154}
+        self.PresetDump[19773] = {1155,1156}
+        self.PresetDump[19783] = {1157,1158}
+        self.PresetDump[19793] = {1159,1160}
+        self.PresetDump[19803] = {1161,1162}
+        self.PresetDump[19813] = {1163,1164}
+        self.PresetDump[19823] = {1165,1166}
+        self.PresetDump[19833] = {1167,1168}
+        self.PresetDump[19843] = {1169,1170}
+        self.PresetDump[19853] = {1171,1172}
+        self.PresetDump[19863] = {1173,1174}
+        self.PresetDump[19873] = {1175,1176}
+        self.PresetDump[19883] = {1177,1178}
+        self.PresetDump[19893] = {1179,1180}
+        self.PresetDump[19903] = {1181,1182}
+        self.PresetDump[19913] = {1183,1184}
+        self.PresetDump[19923] = {1185,1186}
+        self.PresetDump[14094] = {1187,1188}
+        self.PresetDump[14104] = {1189,1190}
+        self.PresetDump[14114] = {1191,1192}
+        self.PresetDump[14124] = {1193,1194}
+        self.PresetDump[14134] = {1195,1196}
+        self.PresetDump[14144] = {1197,1198}
+        self.PresetDump[14154] = {1199,1200}
+        self.PresetDump[14164] = {1201,1202}
+        self.PresetDump[14174] = {1203,1204}
+        self.PresetDump[14184] = {1205,1206}
+        self.PresetDump[14194] = {1207,1208}
+        self.PresetDump[14204] = {1209,1210}
+        self.PresetDump[14214] = {1211,1212}
+        self.PresetDump[14224] = {1213,1214}
+        self.PresetDump[14234] = {1215,1216}
+        self.PresetDump[14244] = {1217,1218}
+        self.PresetDump[14254] = {1219,1220}
+        self.PresetDump[14264] = {1221,1222}
+        self.PresetDump[14274] = {1223,1224}
+        self.PresetDump[14284] = {1225,1226}
+        self.PresetDump[14294] = {1227,1228}
+        self.PresetDump[14304] = {1229,1230}
+        self.PresetDump[14314] = {1231,1232}
+        self.PresetDump[14324] = {1233,1234}
+        self.PresetDump[14334] = {1235,1236}
+        self.PresetDump[14344] = {1237,1238}
+        self.PresetDump[14354] = {1239,1240}
+        self.PresetDump[14364] = {1241,1242}
+        self.PresetDump[14374] = {1243,1244}
+        self.PresetDump[14384] = {1245,1246}
+        self.PresetDump[14394] = {1247,1248}
+        self.PresetDump[15374] = {1249,1250}
+        self.PresetDump[15384] = {1251,1252}
+        self.PresetDump[15394] = {1253,1254}
+        self.PresetDump[16654] = {1255,1256}
+        self.PresetDump[16664] = {1257,1258}
+        self.PresetDump[16674] = {1259,1260}
+        self.PresetDump[16684] = {1261,1262}
+        self.PresetDump[16694] = {1263,1264}
+        self.PresetDump[16704] = {1265,1266}
+        self.PresetDump[16714] = {1267,1268}
+        self.PresetDump[16724] = {1269,1270}
+        self.PresetDump[16734] = {1271,1272}
+        self.PresetDump[16744] = {1273,1274}
+        self.PresetDump[17934] = {1275,1276}
+        self.PresetDump[17944] = {1277,1278}
+        self.PresetDump[17954] = {1279,1280}
+        self.PresetDump[17964] = {1281,1282}
+        self.PresetDump[17974] = {1283,1284}
+        self.PresetDump[17984] = {1285,1286}
+        self.PresetDump[17994] = {1287,1288}
+        self.PresetDump[18004] = {1289,1290}
+        self.PresetDump[18014] = {1291,1292}
+        self.PresetDump[18024] = {1293,1294}
+        self.PresetDump[18034] = {1295,1296}
+        self.PresetDump[18044] = {1297,1298}
+        self.PresetDump[18054] = {1299,1300}
+        self.PresetDump[18064] = {1301,1302}
+        self.PresetDump[18074] = {1303,1304}
+        self.PresetDump[18084] = {1305,1306}
+        self.PresetDump[18094] = {1307,1308}
+        self.PresetDump[18104] = {1309,1310}
+        self.PresetDump[18114] = {1311,1312}
+        self.PresetDump[18124] = {1313,1314}
+        self.PresetDump[18134] = {1315,1316}
+        self.PresetDump[18144] = {1317,1318}
+        self.PresetDump[18154] = {1319,1320}
+        self.PresetDump[18164] = {1321,1322}
+        self.PresetDump[18174] = {1323,1324}
+        self.PresetDump[18184] = {1325,1326}
+        self.PresetDump[18194] = {1327,1328}
+        self.PresetDump[18204] = {1329,1330}
+        self.PresetDump[18214] = {1331,1332}
+        self.PresetDump[18224] = {1333,1334}
+        self.PresetDump[18234] = {1335,1336}
+        self.PresetDump[18244] = {1337,1338}
+        self.PresetDump[18254] = {1339,1340}
+        self.PresetDump[18264] = {1341,1342}
+        self.PresetDump[18274] = {1343,1344}
+        self.PresetDump[18284] = {1345,1346}
+        self.PresetDump[18294] = {1347,1348}
+        self.PresetDump[18304] = {1349,1350}
+        self.PresetDump[18314] = {1351,1352}
+        self.PresetDump[18334] = {1353,1354}
+        self.PresetDump[18344] = {1355,1356}
+        self.PresetDump[19204] = {1357,1358}
+        self.PresetDump[19214] = {1359,1360}
+        self.PresetDump[19224] = {1361,1362}
+        self.PresetDump[19234] = {1363,1364}
+        self.PresetDump[19244] = {1365,1366}
+        self.PresetDump[19254] = {1367,1368}
+        self.PresetDump[19264] = {1369,1370}
+        self.PresetDump[19274] = {1371,1372}
+        self.PresetDump[19284] = {1373,1374}
+        self.PresetDump[19294] = {1375,1376}
+        self.PresetDump[19304] = {1377,1378}
+        self.PresetDump[19314] = {1379,1380}
+        self.PresetDump[19324] = {1381,1382}
+        self.PresetDump[19334] = {1383,1384}
+        self.PresetDump[19344] = {1385,1386}
+        self.PresetDump[19354] = {1387,1388}
+        self.PresetDump[19364] = {1389,1390}
+        self.PresetDump[19374] = {1391,1392}
+        self.PresetDump[19384] = {1393,1394}
+        self.PresetDump[19394] = {1395,1396}
+        self.PresetDump[19404] = {1397,1398}
+        self.PresetDump[19414] = {1399,1400}
+        self.PresetDump[19424] = {1401,1402}
+        self.PresetDump[19434] = {1403,1404}
+        self.PresetDump[19444] = {1405,1406}
+        self.PresetDump[19454] = {1407,1408}
+        self.PresetDump[19464] = {1409,1410}
+        self.PresetDump[19474] = {1411,1412}
+        self.PresetDump[19484] = {1413,1414}
+        self.PresetDump[19494] = {1415,1416}
+        self.PresetDump[19504] = {1417,1418}
+        self.PresetDump[19514] = {1419,1420}
+        self.PresetDump[19524] = {1421,1422}
+        self.PresetDump[19534] = {1423,1424}
+        self.PresetDump[19544] = {1425,1426}
+        self.PresetDump[19554] = {1427,1428}
+        self.PresetDump[19564] = {1429,1430}
+        self.PresetDump[19574] = {1431,1432}
+        self.PresetDump[19584] = {1433,1434}
+        self.PresetDump[19594] = {1435,1436}
+        self.PresetDump[19604] = {1437,1438}
+        self.PresetDump[19614] = {1439,1440}
+        self.PresetDump[19624] = {1441,1442}
+        self.PresetDump[19634] = {1443,1444}
+        self.PresetDump[19644] = {1445,1446}
+        self.PresetDump[19654] = {1447,1448}
+        self.PresetDump[19664] = {1449,1450}
+        self.PresetDump[19674] = {1451,1452}
+        self.PresetDump[19684] = {1453,1454}
+        self.PresetDump[19694] = {1455,1456}
+        self.PresetDump[19704] = {1457,1458}
+        self.PresetDump[19714] = {1459,1460}
+        self.PresetDump[19724] = {1461,1462}
+        self.PresetDump[19734] = {1463,1464}
+        self.PresetDump[19744] = {1465,1466}
+        self.PresetDump[19754] = {1467,1468}
+        self.PresetDump[19764] = {1469,1470}
+        self.PresetDump[19774] = {1471,1472}
+        self.PresetDump[19784] = {1473,1474}
+        self.PresetDump[19794] = {1475,1476}
+        self.PresetDump[19804] = {1477,1478}
+        self.PresetDump[19814] = {1479,1480}
+        self.PresetDump[19824] = {1481,1482}
+        self.PresetDump[19834] = {1483,1484}
+        self.PresetDump[19844] = {1485,1486}
+        self.PresetDump[19854] = {1487,1488}
+        self.PresetDump[19864] = {1489,1490}
+        self.PresetDump[19874] = {1491,1492}
+        self.PresetDump[19884] = {1493,1494}
+        self.PresetDump[19894] = {1495,1496}
+        self.PresetDump[19904] = {1497,1498}
+        self.PresetDump[19914] = {1499,1500}
+        self.PresetDump[19924] = {1501,1502}
+
+        
+    end
     return self
 end
 
----@type table
+--@type
 local MessageObjects = {}
 ---Table for holding Populated Sysex Messages
----@return table MessageObjects
 function MessageObjects:new()
     setmetatable({}, self)
     self.__index = self
+    
 
-    self.DeviceInquiry = {}
+    self.DeviceInquiryMessageObject = {}
     self.SetupDumpMessageObject = {}
+    self.PresetDumpMessageObject = {}
 
     return self
 end
 
----@type table MessageParser
-local MessageParser = {}
+local MessageBuffer = {
+    msgSpecs = MessageSpecs:new(),
+    du = DataUtils:new(),
+    sysexHeader = "",
+    command = "",
+    subcommand = "",
+    messages = {},
+    packetCounter = 0,
+    totalPackets = 0,
+    bytesPerMessage = 0,
+    receiveHandler = function() end,
+    sendHandler = function() end,
 
+}
+
+---Buffer object for midi communication mitigation
+---@param o any
+---@return table self 
+function MessageBuffer:new(o)
+  o = o or {}
+  setmetatable({},self)
+  self.__index = self
+
+  ---Send Closed Loop ACK with packet counter
+  ---@param counter? integer
+  ---@return string
+  function self.sendACK(counter)
+    -- if no counter provided try using the store one, else 0
+    counter = counter or self.packetCounter or 0
+    local msg = self.msgSpecs.ACKClosedLoopwithPacketCounter[0][1]
+    local counterHex = tostring(self.du.removeSpaces(self.du.nibblize14bitToHexString(counter)))
+    msg = self.du.putDataUsingMask(msg,"aaaa",counterHex)
+    msg = self.du.putDataUsingMask(MessageSpecs.SysexWrapper,"XX",msg)
+
+    return msg
+  end
+
+  function self.isSysexNonRealtime() end
+  function self.isSysexUniversal() end
+  function self.isValueHexString() end
+  
+
+  return self 
+end
+--local messageBuffer = MessageBuffer:new()
+
+
+local MessageParser = {}
 ---Function library table for managing sysex messages
----@return table MessageParser
 function MessageParser:new()
     setmetatable({}, self)
     self.__index = self
-    ---@type table
+    local InboundMessageBuffer = {}
+
     local du = DataUtils:new()
+
+    ---read a string into a byte table with 2 chars per element
+    ---@param str string input string, normally a hexString
+    ---@return table byteTable a table of elements containing 2 chars each
+    function self.stringToByteTable(str)
+        -- string length must be even to be valid hexString
+        if(#str%2 ~= 0) then return {} end -- return empty table
+
+        -- scrape response string to byte table with 2 chars per cell
+        local byteTable = {}
+        local pointer = 1
+        for i = 1, (#str / 2) do
+            byteTable[i] = string.sub(str, pointer, pointer + 1)
+            pointer = pointer + 2
+        end
+        return byteTable
+    end
 
     ---parse response message to byteTable then create mapped object table from it using MessageContract
     ---@param response string response message
     ---@return table MessageObject table of mapped paramIds -> hex value(s)
-    function self.parseSetupDumpResponse(response)
+    function self.setupDumpResponseParser(response)
         -- clean spaces and remove sysex universal control bytes
         local syxctl = "F0180F0055"
         response = du.cleanSysexUniversalMessage(du.removeSpaces(response), syxctl)
@@ -1613,17 +2590,111 @@ function MessageParser:new()
         return msgObj
     end
 
+
+        ---parse response message to byteTable then create mapped object table from it using MessageContract
+    ---@param response string response message
+    ---@return table MessageObject table of mapped paramIds -> hex value(s)
+    function self.presetDumpResponseParser(response)
+        -- clean spaces and remove sysex universal control bytes
+        local syxctl = "F0180F0055"
+        response = du.cleanSysexUniversalMessage(du.removeSpaces(response), syxctl)
+
+
+        local byteTable = self.stringToByteTable(response)
+
+
+        -- use Message Contract to build MessageObject Table mapped {paramid,byte(s)}
+        local msgObj = {}
+        for k, v in pairs(MessageContracts:new().PresetDump) do
+            if (v[1] == v[2]) then
+                msgObj[k] = string.format("%s", byteTable[v[1]])
+            else
+                msgObj[k] = string.format("%s%s", byteTable[v[1]], byteTable[v[2]])
+            end
+        end
+        return msgObj
+    end
+
+
+    ---Preset Dump Receiver that accumulates messages, extracts the handshake packet count and returns applicable ACKs
+    ---once EOF reveived, save to buffer, clean sysex control bytes, and save to hexString(then to MemoryBlock)
+    ---If error enountered, return 'STOP'
+    ---@param message string inbound midi message
+    ---@return string dump presetDump after aggregating & cleaning
+    function self.presetDumpReceiverHandler(message)
+        -- error checking
+        if(message == nil or #message == 0) then return "STOP" end
+        -- 
+        
+        -- dump[#dump+1] = message
+
+        
+    end
+
+
+    ---prepare the PresetDump messages for parsing
+    ---@param presetDumpTable table table holding RAW preset sysex data
+    ---@return string response
+    ---@return string statusMessage
+    function self.presetDumpResponseHandler(presetDumpTable)
+        -- iterate the table, stripping sysex control bytes and any spaces
+        -- check for even message length
+        local syxctl = "F0180Fid551002pppp" -- +4 for packet numbers
+
+        local response = ""
+        for i=1,#presetDumpTable do
+            -- clean spaces and remove sysex universal control bytes
+            response = response .. du.cleanSysexUniversalMessage(du.removeSpaces(presetDumpTable[i]), #syxctl)
+            -- check message length is even, abort if not
+            if(#response %2 ~= 0) then return "",string.format("response is invalid length [%s]",#response) end
+        end
+
+        return response, "Successful compacting of Message Table to single string"
+    end
+
+    self.PresetDumpBuffer = {}
+    function self.presetDumpBufferHandler()
+    end
+
+
+
+
     return self
 end
 
---[[ tests ]]
---
+
+
+--[[ tests MessageBuffer ]]
+-- local requestTables = RequestsTable:new()
+-- local msgParser = MessageParser:new()
+local messageBuffer = MessageBuffer:new()
+local result
+result = messageBuffer.sendACK(1)
+print(result)
+result = messageBuffer.sendACK()
+print(result)
+messageBuffer.packetCounter = 1
+result = messageBuffer.sendACK()
+print(result)
+
+
+--[[ tests PresetDump
+local requestTables = RequestsTable:new()
+local msgParser = MessageParser:new()
+local  responseTable = requestTables.PresetDumpResponse
+local setupDumpResponse = msgParser.presetDumpResponseHandler(responseTable)
+local byteTable = msgParser.presetDumpResponseParser(setupDumpResponse)
+]]
+
+--[[ tests SetupDump 
+local requestTables = RequestsTable:new()
+local msgParser = MessageParser:new()
 local setupDumpResponse = RequestsTable:new().SetupDumpResponse
 MessageParser:new().parseSetupDumpResponse(setupDumpResponse)
+]]
 
 
 --[[ debug stop ]]
---
 print("stop")
 
 
@@ -1646,5 +2717,12 @@ print(respMessage)
 local setupDumpResponse = du.cleanSysexUniversalMessage(du.removeSpaces(dataTable.SetupDumpResponse), 10)
 
 
-]]
-   --
+]]--
+
+        -- -- scrape response string to byte table with 2 chars per cell
+        -- local byteTable = {}
+        -- local pointer = 1
+        -- for i = 1, (#response / 2) do
+        --     byteTable[i] = string.sub(response, pointer, pointer + 1)
+        --     pointer = pointer + 2
+        -- end
