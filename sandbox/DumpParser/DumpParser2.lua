@@ -19,8 +19,6 @@ end
 
 
 --[[ COMMON VARS ]]
-local packetCounter = 0
-local messages = {}
 
 
 --[[ Function Libraries ]]
@@ -381,7 +379,7 @@ function DataUtils:new(o)
             -- error checking
             isCheckLength = isCheckLength or false
             if(isCheckLength) then
-                if(#needle ~= #data) then return "ERORR", string.format("ERROR: data[%s][%d] size does not match mask[%s][%d] size",data,#data,needle,#needle) end
+                if(#needle ~= #data) then return "ERROR", string.format("ERROR: data[%s][%d] size does not match mask[%s][%d] size",data,#data,needle,#needle) end
             end
             -- replace need with data if found
             local result = string.gsub(haystack, needle, data)
@@ -421,7 +419,7 @@ function DataUtils:new(o)
             -- %0#x: padds leading zeros to fill up # posistions
             -- %.#x:
         ]]--
-        
+
         ---format an integer to hex. Supports :sub() length argument
         ---@param value integer value to convert
         ---@param length integer adjusts formatting length.
@@ -662,9 +660,8 @@ function DataUtils:new(o)
         ---@param msg string message to parse
         ---@return boolean _ return true if starts with F0, ends with F7
         function self.isSysexNonRealtime(msg)
-            local du = DataUtils:new()
-            local resultStart = du.isStartsWith(msg, "F0", true)
-            local resultEnd = du.isEndsWith(msg, "F7", true)
+            local resultStart = DU.isStartsWith(msg, "F0", true)
+            local resultEnd = DU.isEndsWith(msg, "F7", true)
             if ((resultStart == true) and (resultEnd == true)) then
                 return true
             else
@@ -677,8 +674,8 @@ function DataUtils:new(o)
         ---@param msg string message to parse
         ---@return boolean _ return true if starts with F0, ends with F7
         function self.isSysexUniversal(msg)
-            local du = DataUtils:new()
-            local isSysex, status = du.isWithMatcher(msg,"^(F0..0F..55).*(F7)$",1)
+            local DU = DataUtils:new()
+            local isSysex, status = DU.isWithMatcher(msg,"^(F0..0F..55).*(F7)$",1)
             p(status)
             return isSysex
         end
@@ -826,29 +823,152 @@ function RequestsTable:new(o)
     return self
 end
 
----@class MessageSpecs
-local MessageSpecs = {
-    ---@type string Sysex wrapper to create sysex messages by injecting raw data
-    SysexWrapper = "F0180F0055XXF7",
-    ---@type string sysex prefix header 'F0180F'
-    SysexUniversal_Prefix = "F0180F",
-    ---@type string sysex START byte
-    SysexUniversal_SOX = "F0",
-    ---@type string sysex END byte
-    SysexUniversal_EOX = "F7",
-    ---@enum sysex Handshake control bytes
-    Handshake = {
+
+---@class LOOKUP
+local LOOKUP = {
+--- constants for message creation
+    Messaging = {},
+    Masks = {
+        ---@enum sysex Handshake control bytes
+        Handshake = {
+            ---@type string Sysex wrapper to create sysex messages by injecting raw data
+            SysexWrapper = "F0180F0055XXF7",
+            ACKClosedLoop = "7Fpppp",
+            NAK = "7Epppp",
+        },
+        Dumps = {
+            PresetDumpResponse = "1002pppp",
+            PresetDumpHeaderResponse = "1001",
+            SetupDumpResponse = "1C",
+        }
+    },
+    SyxCtl = {
         ACK = "7F",
-        ACKClosedLoop = "7Fpppp",
-        NAK = "7Epppp",
+        ACKClosedLoop = "7F",
+        NAK = "7E",
         CANCEL = "7D",
         EOF = "7B",
+        ---@type string sysex END byte
+        EOX = "F7",
+        ---@type string sysex START byte
+        SOX = "F0",
     },
     Headers = {
+        ---@type string sysex prefix header 'F0180F'
+        SysexUniversal_Prefix = "F0180F",
         BasicHeader = "F0180FXX55",
-        PresetDumpHeaderResponse = "1001",
-        PresetDumpResponse = "1002pppp",
-        SetupDumpResponse = "1C",
+    },
+    --- Possible Sysex Command Type Keys
+    ---@enum SysexCommandTypes
+    SysexCommandTypes = {
+        IDLE = "IDLE",
+        Sysex_Start = "Sysex_Start",
+        SysexNRT = "SysexNRT",
+        --device inquiry
+        DeviceInquiry = "DeviceInquiry",
+        DeviceInquiryResponse = "DeviceInquiryResponse",
+        -- hw config
+        HardwareConfigurationResponse = "HardwareConfigurationResponse",
+        HardwareConfigurationRequest = "HardwareConfigurationRequest",
+        -- setup Dump
+        SetupDumpResponse = "SetupDumpResponse",
+        SetupDumpRequest = "SetupDumpRequest",
+        -- generic dump
+        GenericDumpRequest = "GenericDumpRequest",
+        GenericDump = "GenericDump",
+        -- tuning
+        BulkTuningDumpRequest = "BulkTuningDumpRequest",
+        BulkTuningDumpResponse = "BulkTuningDumpResponse",
+        SingleNoteTuningChange = "SingleNoteTuningChange",
+        -- master volume
+        MasterVolume = "MasterVolume",
+        -- params
+        ParameterEditRequest = "ParameterEditRequest",
+        ParameterValueRequest = "ParameterValueRequest",
+        ParamMinMaxDefaultValueResponse = "ParamMinMaxDefaultValueResponse",
+        ParamMinMaxDefaultValueRequest = "ParamMinMaxDefaultValueRequest",
+        -- names
+        GenericName = "GenericName",
+        GenericNameRequest = "GenericNameRequest",
+        RESERVED = "RESERVED",
+        -- preset dump
+        PresetDumpHeaderClosedLoopResponse = "PresetDumpHeaderClosedLoopResponse",
+        PresetDumpDataClosedLoopResponse = "PresetDumpDataClosedLoopResponse",
+        PresetDumpHeaderOpenLoopResponse = "PresetDumpHeaderOpenLoopResponse",
+        PresetDumpDataOpenLoopResponse = "PresetDumpDataOpenLoopResponse",
+        -- preset common
+        PresetCommonParamsDumpDataResponse = "PresetCommonParamsDumpDataResponse",
+        PresetCommonGeneralParamsDumpDataResponse = "PresetCommonGeneralParamsDumpDataResponse",
+        PresetCommonArpParamsDumpDataResponse = "PresetCommonArpParamsDumpDataResponse",
+        PresetCommonEffectsParamsDumpDataResponse = "PresetCommonEffectsParamsDumpDataResponse",
+        PresetCommonLinkParamsDumpDataResponse = "PresetCommonLinkParamsDumpDataResponse",
+        -- preset layer
+        PresetLayerParamsDumpDataResponse = "PresetLayerParamsDumpDataResponse",
+        PresetLayerGeneralParamsDumpDataResponse = "PresetLayerGeneralParamsDumpDataResponse",
+        PresetLayerFilterParamsDumpDataResponse = "PresetLayerFilterParamsDumpDataResponse",
+        PresetLayerLFOParamsDumpDataResponse = "PresetLayerLFOParamsDumpDataResponse",
+        PresetLayerEnvelopeParamsDumpDataResponse = "PresetLayerEnvelopeParamsDumpDataResponse",
+        PresetLayerPatchcordParamsDumpDataResponse = "PresetLayerPatchcordParamsDumpDataResponse",
+        reserved = "reserved",
+        -- preset dump request
+        PresetDumpRequestClosedLoop = "PresetDumpRequestClosedLoop",
+        PresetDumpRequestOpenLoop = "PresetDumpRequestOpenLoop",
+        PresetCommonParamsDumpRequest = "PresetCommonParamsDumpRequest",
+        PresetCommonGeneralParamsDumpRequest = "PresetCommonGeneralParamsDumpRequest",
+        PresetCommonArpParamsDumpRequest = "PresetCommonArpParamsDumpRequest",
+        PresetCommonFXParamsDumpRequest = "PresetCommonFXParamsDumpRequest",
+        PresetCommonLinkParamsDumpRequest = "PresetCommonLinkParamsDumpRequest",
+        PresetLayerParamsDumpRequest = "PresetLayerParamsDumpRequest",
+        PresetLayerGeneralParamsDumpRequest = "PresetLayerGeneralParamsDumpRequest",
+        PresetLayerFilterParamsDumpRequest = "PresetLayerFilterParamsDumpRequest",
+        PresetLayerLFOParamsDumpRequest = "PresetLayerLFOParamsDumpRequest",
+        PresetLayerEnvelopeParamsDumpRequest = "PresetLayerEnvelopeParamsDumpRequest",
+        PresetLayerCordParamsDumpRequest = "PresetLayerCordParamsDumpRequest",
+        -- prog change map
+        ProgramChangePresetMapDumpResponse = "ProgramChangePresetMapDumpResponse",
+        ProgramChangePresetMapDumpRequest = "ProgramChangePresetMapDumpRequest",
+        -- arp patterns
+        ArpeggiatorPatternDumpResponse = "ArpeggiatorPatternDumpResponse",
+        ArpeggiatorPatternDumpRequest = "ArpeggiatorPatternDumpRequest",
+        -- lcd
+        LCDScreenDumpResponseP2KAudity2K = "LCDScreenDumpResponseP2KAudity2K",
+        LCDScreenDumpRequestP2KAudity2K = "LCDScreenDumpRequestP2KAudity2K",
+        LCDScreenCharacterPalletResponse = "LCDScreenCharacterPalletResponse",
+        LCDScreenCharacterPalletRequest = "LCDScreenCharacterPalletRequest",
+        --handshake
+        ACK = "ACK",
+        ACKClosedLoopwithPacketCounter = "ACKClosedLoopwithPacketCounter",
+        NAK = "NAK",
+        CANCEL = "CANCEL",
+        WAIT = "WAIT",
+        EOF = "EOF",
+        -- copy
+        CopyPresetRequest = "CopyPresetRequest",
+        CopyPresetCommonParametersRequest = "CopyPresetCommonParametersRequest",
+        CopyArpParametersRequest = "CopyArpParametersRequest",
+        CopyEffectsParametersRequestMasterorPreset = "CopyEffectsParametersRequestMasterorPreset",
+        CopyPresetLinkParametersRequest = "CopyPresetLinkParametersRequest",
+        CopyPresetLayerRequest = "CopyPresetLayerRequest",
+        CopyPresetLayerCommonParametersRequest = "CopyPresetLayerCommonParametersRequest",
+        CopyPresetLayerFilterParametersRequest = "CopyPresetLayerFilterParametersRequest",
+        CopyPresetLayerLFOParametersRequest = "CopyPresetLayerLFOParametersRequest",
+        CopyPresetLayerEnvelopeParametersRequest = "CopyPresetLayerEnvelopeParametersRequest",
+        CopyPresetLayerPatchCordsRequest = "CopyPresetLayerPatchCordsRequest",
+        CopyArpPatternRequest = "CopyArpPatternRequest",
+        CopyMasterSetupRequest = "CopyMasterSetupRequest",
+        CopyPatternRequest = "CopyPatternRequest",
+        CopySongRequest = "CopySongRequest",
+        -- remote control
+        RemoteControlOpenSessionRequest = "RemoteControlOpenSessionRequest",
+        RemoteControlCloseSessionRequest = "RemoteControlCloseSessionRequest",
+        RemoteControlButtonEventRequest = "RemoteControlButtonEventRequest",
+        RemoteControlRotaryEventRequest = "RemoteControlRotaryEventRequest",
+        RemoteControlLEDStateEventRequest = "RemoteControlLEDStateEventRequest",
+        -- misc
+        ErrorMessage = "ErrorMessage",
+        -- randomize
+        RandomizePreset = "RandomizePreset",
+        RandomizeSeedPreset4byte = "RandomizeSeedPreset4byte",
     },
     ---@enum Status enum for managing process states and return status
     Status = {
@@ -868,55 +988,54 @@ local MessageSpecs = {
     },
     ---@enum Midi masks for string replacement to create messages
     Midi = { -- message masks for string replacement operations
-        --- Polyphonic Mesage [0xnc, 0xkk, 0xpp]
-        -- - c: channel | kk: key# | pp: pressure
-        -- - n is the status (0xA)
-        -- - c is the channel nybble
-        -- - kk is the key number (0 to 127)
-        -- - pp is the pressure value (0 to 127)
-        PolyPhonic = "A# kk pp",
-        --- Channel Aftertouch [0xnc, 0xpp]
-        -- - n is the status (0xD)
-        -- - c is the channel number
-        -- - pp is the pressure value (0 to 127)
-        ChannelAftertouch = "C# pp",
-        --- PitchBend [0xnc, 0xLL, 0xMM]
-        -- - n is the status (0xE)
-        -- - c is the channel number
-        -- - LL is the 7 least-significant bits of the value
-        -- - MM is the 7 most-significant bits of the value
-        PitchBend = "E# pp",
-        --- ControlChange [0xnc, 0xcc, 0xvv]
-        -- - n is the status (0xB)
-        -- - c is the MIDI channel
-        -- - cc is the controller number (0-127)
-        -- - vv is the controller value (0-127)
-        ControlChange = "B# cc vv",
-        --- ProgramChange [0xnc, 0xpp]
-        -- - n is the status (0xc)
-        -- - c is the channel
-        -- - pp is the patch number (0-127)
-        ProgramChange = "C# pp",
-        SystemMessages = {
-            --- TimeCodeQuarterFrame: Indicates timing using absolute time code, primarily for synthronization with video playback systems. A single location requires eight messages to send the location in an encoded hours:minutes:seconds:frames format*.
-            -- - 0xF1 | 1-byte
-            TimeCodeQuarterFrame = "",
-            ---SongPosition: Instructs a sequencer to jump to a new position in the song. The data bytes form a 14-bit value that expresses the location as the number of sixteenth notes from the start of the song.
-            -- - 0xF2 | 2-bytes
-            SongPosition = "",
-            ---SongSelect: Instructs a sequencer to select a new song. The data byte indicates the song.
-            -- - 0xF3 | 1-byte
-            SongSelect = "",
-            --- 0xF4 | 0-bytes
-            UndefinedF4 = "",
-            --- 0xF5 | 0-bytes
-            UndefinedF5 = "",
-            --- TuneRequest: Requests that the reciever retune itself**.
-            --- 0xF6 | 0-bytes
-            TuneRequest = ""
+    --- Polyphonic Mesage [0xnc, 0xkk, 0xpp]
+    -- - c: channel | kk: key# | pp: pressure
+    -- - n is the status (0xA)
+    -- - c is the channel nybble
+    -- - kk is the key number (0 to 127)
+    -- - pp is the pressure value (0 to 127)
+    PolyPhonic = "A# kk pp",
+    --- Channel Aftertouch [0xnc, 0xpp]
+    -- - n is the status (0xD)
+    -- - c is the channel number
+    -- - pp is the pressure value (0 to 127)
+    ChannelAftertouch = "C# pp",
+    --- PitchBend [0xnc, 0xLL, 0xMM]
+    -- - n is the status (0xE)
+    -- - c is the channel number
+    -- - LL is the 7 least-significant bits of the value
+    -- - MM is the 7 most-significant bits of the value
+    PitchBend = "E# pp",
+    --- ControlChange [0xnc, 0xcc, 0xvv]
+    -- - n is the status (0xB)
+    -- - c is the MIDI channel
+    -- - cc is the controller number (0-127)
+    -- - vv is the controller value (0-127)
+    ControlChange = "B# cc vv",
+    --- ProgramChange [0xnc, 0xpp]
+    -- - n is the status (0xc)
+    -- - c is the channel
+    -- - pp is the patch number (0-127)
+    ProgramChange = "C# pp",
+    SystemMessages = {
+        --- TimeCodeQuarterFrame: Indicates timing using absolute time code, primarily for synthronization with video playback systems. A single location requires eight messages to send the location in an encoded hours:minutes:seconds:frames format*.
+        -- - 0xF1 | 1-byte
+        TimeCodeQuarterFrame = "",
+        ---SongPosition: Instructs a sequencer to jump to a new position in the song. The data bytes form a 14-bit value that expresses the location as the number of sixteenth notes from the start of the song.
+        -- - 0xF2 | 2-bytes
+        SongPosition = "",
+        ---SongSelect: Instructs a sequencer to select a new song. The data byte indicates the song.
+        -- - 0xF3 | 1-byte
+        SongSelect = "",
+        --- 0xF4 | 0-bytes
+        UndefinedF4 = "",
+        --- 0xF5 | 0-bytes
+        UndefinedF5 = "",
+        --- TuneRequest: Requests that the reciever retune itself**.
+        --- 0xF6 | 0-bytes
+        TuneRequest = ""
 
-        }
-
+        },
     },
     ---enum for matching calls. Specifically for determining message types
     ---@enum Matchers
@@ -1032,121 +1151,12 @@ local MessageSpecs = {
         RandomizePreset = "71",
         RandomizeSeedPreset4byte = "72",
     },
-            --- Possible Sysex Command Type Keys
-    ---@enum SysexCommandTypes
-    SysexCommandTypes = {
-        IDLE = "IDLE",
-        Sysex_Start = "Sysex_Start",
-        SysexNRT = "SysexNRT",
-        --device inquiry
-        DeviceInquiry = "DeviceInquiry",
-        DeviceInquiryResponse = "DeviceInquiryResponse",
-        -- hw config
-        HardwareConfigurationResponse = "HardwareConfigurationResponse",
-        HardwareConfigurationRequest = "HardwareConfigurationRequest",
-        -- setup Dump
-        SetupDumpResponse = "SetupDumpResponse",
-        SetupDumpRequest = "SetupDumpRequest",
-        -- generic dump
-        GenericDumpRequest = "GenericDumpRequest",
-        GenericDump = "GenericDump",
-        -- tuning
-        BulkTuningDumpRequest = "BulkTuningDumpRequest",
-        BulkTuningDumpResponse = "BulkTuningDumpResponse",
-        SingleNoteTuningChange = "SingleNoteTuningChange",
-        -- master volume
-        MasterVolume = "MasterVolume",
-        -- params
-        ParameterEditRequest = "ParameterEditRequest",
-        ParameterValueRequest = "ParameterValueRequest",
-        ParamMinMaxDefaultValueResponse = "ParamMinMaxDefaultValueResponse",
-        ParamMinMaxDefaultValueRequest = "ParamMinMaxDefaultValueRequest",
-        -- names
-        GenericName = "GenericName",
-        GenericNameRequest = "GenericNameRequest",
-        RESERVED = "RESERVED",
-        -- preset dump
-        PresetDumpHeaderClosedLoopResponse = "PresetDumpHeaderClosedLoopResponse",
-        PresetDumpDataClosedLoopResponse = "PresetDumpDataClosedLoopResponse",
-        PresetDumpHeaderOpenLoopResponse = "PresetDumpHeaderOpenLoopResponse",
-        PresetDumpDataOpenLoopResponse = "PresetDumpDataOpenLoopResponse",
-        -- preset common
-        PresetCommonParamsDumpDataResponse = "PresetCommonParamsDumpDataResponse",
-        PresetCommonGeneralParamsDumpDataResponse = "PresetCommonGeneralParamsDumpDataResponse",
-        PresetCommonArpParamsDumpDataResponse = "PresetCommonArpParamsDumpDataResponse",
-        PresetCommonEffectsParamsDumpDataResponse = "PresetCommonEffectsParamsDumpDataResponse",
-        PresetCommonLinkParamsDumpDataResponse = "PresetCommonLinkParamsDumpDataResponse",
-        -- preset layer
-        PresetLayerParamsDumpDataResponse = "PresetLayerParamsDumpDataResponse",
-        PresetLayerGeneralParamsDumpDataResponse = "PresetLayerGeneralParamsDumpDataResponse",
-        PresetLayerFilterParamsDumpDataResponse = "PresetLayerFilterParamsDumpDataResponse",
-        PresetLayerLFOParamsDumpDataResponse = "PresetLayerLFOParamsDumpDataResponse",
-        PresetLayerEnvelopeParamsDumpDataResponse = "PresetLayerEnvelopeParamsDumpDataResponse",
-        PresetLayerPatchcordParamsDumpDataResponse = "PresetLayerPatchcordParamsDumpDataResponse",
-        reserved = "reserved",
-        -- preset dump request
-        PresetDumpRequestClosedLoop = "PresetDumpRequestClosedLoop",
-        PresetDumpRequestOpenLoop = "PresetDumpRequestOpenLoop",
-        PresetCommonParamsDumpRequest = "PresetCommonParamsDumpRequest",
-        PresetCommonGeneralParamsDumpRequest = "PresetCommonGeneralParamsDumpRequest",
-        PresetCommonArpParamsDumpRequest = "PresetCommonArpParamsDumpRequest",
-        PresetCommonFXParamsDumpRequest = "PresetCommonFXParamsDumpRequest",
-        PresetCommonLinkParamsDumpRequest = "PresetCommonLinkParamsDumpRequest",
-        PresetLayerParamsDumpRequest = "PresetLayerParamsDumpRequest",
-        PresetLayerGeneralParamsDumpRequest = "PresetLayerGeneralParamsDumpRequest",
-        PresetLayerFilterParamsDumpRequest = "PresetLayerFilterParamsDumpRequest",
-        PresetLayerLFOParamsDumpRequest = "PresetLayerLFOParamsDumpRequest",
-        PresetLayerEnvelopeParamsDumpRequest = "PresetLayerEnvelopeParamsDumpRequest",
-        PresetLayerCordParamsDumpRequest = "PresetLayerCordParamsDumpRequest",
-        -- prog change map
-        ProgramChangePresetMapDumpResponse = "ProgramChangePresetMapDumpResponse",
-        ProgramChangePresetMapDumpRequest = "ProgramChangePresetMapDumpRequest",
-        -- arp patterns
-        ArpeggiatorPatternDumpResponse = "ArpeggiatorPatternDumpResponse",
-        ArpeggiatorPatternDumpRequest = "ArpeggiatorPatternDumpRequest",
-        -- lcd
-        LCDScreenDumpResponseP2KAudity2K = "LCDScreenDumpResponseP2KAudity2K",
-        LCDScreenDumpRequestP2KAudity2K = "LCDScreenDumpRequestP2KAudity2K",
-        LCDScreenCharacterPalletResponse = "LCDScreenCharacterPalletResponse",
-        LCDScreenCharacterPalletRequest = "LCDScreenCharacterPalletRequest",
-        --handshake
-        ACK = "ACK",
-        ACKClosedLoopwithPacketCounter = "ACKClosedLoopwithPacketCounter",
-        NAK = "NAK",
-        CANCEL = "CANCEL",
-        WAIT = "WAIT",
-        EOF = "EOF",
-        -- copy
-        CopyPresetRequest = "CopyPresetRequest",
-        CopyPresetCommonParametersRequest = "CopyPresetCommonParametersRequest",
-        CopyArpParametersRequest = "CopyArpParametersRequest",
-        CopyEffectsParametersRequestMasterorPreset = "CopyEffectsParametersRequestMasterorPreset",
-        CopyPresetLinkParametersRequest = "CopyPresetLinkParametersRequest",
-        CopyPresetLayerRequest = "CopyPresetLayerRequest",
-        CopyPresetLayerCommonParametersRequest = "CopyPresetLayerCommonParametersRequest",
-        CopyPresetLayerFilterParametersRequest = "CopyPresetLayerFilterParametersRequest",
-        CopyPresetLayerLFOParametersRequest = "CopyPresetLayerLFOParametersRequest",
-        CopyPresetLayerEnvelopeParametersRequest = "CopyPresetLayerEnvelopeParametersRequest",
-        CopyPresetLayerPatchCordsRequest = "CopyPresetLayerPatchCordsRequest",
-        CopyArpPatternRequest = "CopyArpPatternRequest",
-        CopyMasterSetupRequest = "CopyMasterSetupRequest",
-        CopyPatternRequest = "CopyPatternRequest",
-        CopySongRequest = "CopySongRequest",
-        -- remote control
-        RemoteControlOpenSessionRequest = "RemoteControlOpenSessionRequest",
-        RemoteControlCloseSessionRequest = "RemoteControlCloseSessionRequest",
-        RemoteControlButtonEventRequest = "RemoteControlButtonEventRequest",
-        RemoteControlRotaryEventRequest = "RemoteControlRotaryEventRequest",
-        RemoteControlLEDStateEventRequest = "RemoteControlLEDStateEventRequest",
-        -- misc
-        ErrorMessage = "ErrorMessage",
-        -- randomize
-        RandomizePreset = "RandomizePreset",
-        RandomizeSeedPreset4byte = "RandomizeSeedPreset4byte",
-    }
-
-
 }
+
+
+---@class MessageSpecs
+local MessageSpecs = {}
+
 ---tables holding sysex messaging specifications
 ---@param o any
 ---@return MessageSpecs
@@ -1702,121 +1712,8 @@ function MessageSpecs:new(o)
     return self
 end
 
-
 ---@class MessageContracts
 local MessageContracts = {
-        --- Possible Sysex Command Type Keys
-    ---@enum CommandTypes
-    CommandTypes = {
-        IDLE = "IDLE",
-        Sysex_Start = "Sysex_Start",
-        SysexNRT = "SysexNRT",
-        --device inquiry
-        DeviceInquiry = "DeviceInquiry",
-        DeviceInquiryResponse = "DeviceInquiryResponse",
-        -- hw config
-        HardwareConfigurationResponse = "HardwareConfigurationResponse",
-        HardwareConfigurationRequest = "HardwareConfigurationRequest",
-        -- setup Dump
-        SetupDumpResponse = "SetupDumpResponse",
-        SetupDumpRequest = "SetupDumpRequest",
-        -- generic dump
-        GenericDumpRequest = "GenericDumpRequest",
-        GenericDump = "GenericDump",
-        -- tuning
-        BulkTuningDumpRequest = "BulkTuningDumpRequest",
-        BulkTuningDumpResponse = "BulkTuningDumpResponse",
-        SingleNoteTuningChange = "SingleNoteTuningChange",
-        -- master volume
-        MasterVolume = "MasterVolume",
-        -- params
-        ParameterEditRequest = "ParameterEditRequest",
-        ParameterValueRequest = "ParameterValueRequest",
-        ParamMinMaxDefaultValueResponse = "ParamMinMaxDefaultValueResponse",
-        ParamMinMaxDefaultValueRequest = "ParamMinMaxDefaultValueRequest",
-        -- names
-        GenericName = "GenericName",
-        GenericNameRequest = "GenericNameRequest",
-        RESERVED = "RESERVED",
-        -- preset dump
-        PresetDumpHeaderClosedLoopResponse = "PresetDumpHeaderClosedLoopResponse",
-        PresetDumpDataClosedLoopResponse = "PresetDumpDataClosedLoopResponse",
-        PresetDumpHeaderOpenLoopResponse = "PresetDumpHeaderOpenLoopResponse",
-        PresetDumpDataOpenLoopResponse = "PresetDumpDataOpenLoopResponse",
-        -- preset common
-        PresetCommonParamsDumpDataResponse = "PresetCommonParamsDumpDataResponse",
-        PresetCommonGeneralParamsDumpDataResponse = "PresetCommonGeneralParamsDumpDataResponse",
-        PresetCommonArpParamsDumpDataResponse = "PresetCommonArpParamsDumpDataResponse",
-        PresetCommonEffectsParamsDumpDataResponse = "PresetCommonEffectsParamsDumpDataResponse",
-        PresetCommonLinkParamsDumpDataResponse = "PresetCommonLinkParamsDumpDataResponse",
-        -- preset layer
-        PresetLayerParamsDumpDataResponse = "PresetLayerParamsDumpDataResponse",
-        PresetLayerGeneralParamsDumpDataResponse = "PresetLayerGeneralParamsDumpDataResponse",
-        PresetLayerFilterParamsDumpDataResponse = "PresetLayerFilterParamsDumpDataResponse",
-        PresetLayerLFOParamsDumpDataResponse = "PresetLayerLFOParamsDumpDataResponse",
-        PresetLayerEnvelopeParamsDumpDataResponse = "PresetLayerEnvelopeParamsDumpDataResponse",
-        PresetLayerPatchcordParamsDumpDataResponse = "PresetLayerPatchcordParamsDumpDataResponse",
-        reserved = "reserved",
-        -- preset dump request
-        PresetDumpRequestClosedLoop = "PresetDumpRequestClosedLoop",
-        PresetDumpRequestOpenLoop = "PresetDumpRequestOpenLoop",
-        PresetCommonParamsDumpRequest = "PresetCommonParamsDumpRequest",
-        PresetCommonGeneralParamsDumpRequest = "PresetCommonGeneralParamsDumpRequest",
-        PresetCommonArpParamsDumpRequest = "PresetCommonArpParamsDumpRequest",
-        PresetCommonFXParamsDumpRequest = "PresetCommonFXParamsDumpRequest",
-        PresetCommonLinkParamsDumpRequest = "PresetCommonLinkParamsDumpRequest",
-        PresetLayerParamsDumpRequest = "PresetLayerParamsDumpRequest",
-        PresetLayerGeneralParamsDumpRequest = "PresetLayerGeneralParamsDumpRequest",
-        PresetLayerFilterParamsDumpRequest = "PresetLayerFilterParamsDumpRequest",
-        PresetLayerLFOParamsDumpRequest = "PresetLayerLFOParamsDumpRequest",
-        PresetLayerEnvelopeParamsDumpRequest = "PresetLayerEnvelopeParamsDumpRequest",
-        PresetLayerCordParamsDumpRequest = "PresetLayerCordParamsDumpRequest",
-        -- prog change map
-        ProgramChangePresetMapDumpResponse = "ProgramChangePresetMapDumpResponse",
-        ProgramChangePresetMapDumpRequest = "ProgramChangePresetMapDumpRequest",
-        -- arp patterns
-        ArpeggiatorPatternDumpResponse = "ArpeggiatorPatternDumpResponse",
-        ArpeggiatorPatternDumpRequest = "ArpeggiatorPatternDumpRequest",
-        -- lcd
-        LCDScreenDumpResponseP2KAudity2K = "LCDScreenDumpResponseP2KAudity2K",
-        LCDScreenDumpRequestP2KAudity2K = "LCDScreenDumpRequestP2KAudity2K",
-        LCDScreenCharacterPalletResponse = "LCDScreenCharacterPalletResponse",
-        LCDScreenCharacterPalletRequest = "LCDScreenCharacterPalletRequest",
-        --handshake
-        ACK = "ACK",
-        ACKClosedLoopwithPacketCounter = "ACKClosedLoopwithPacketCounter",
-        NAK = "NAK",
-        CANCEL = "CANCEL",
-        WAIT = "WAIT",
-        EOF = "EOF",
-        -- copy
-        CopyPresetRequest = "CopyPresetRequest",
-        CopyPresetCommonParametersRequest = "CopyPresetCommonParametersRequest",
-        CopyArpParametersRequest = "CopyArpParametersRequest",
-        CopyEffectsParametersRequestMasterorPreset = "CopyEffectsParametersRequestMasterorPreset",
-        CopyPresetLinkParametersRequest = "CopyPresetLinkParametersRequest",
-        CopyPresetLayerRequest = "CopyPresetLayerRequest",
-        CopyPresetLayerCommonParametersRequest = "CopyPresetLayerCommonParametersRequest",
-        CopyPresetLayerFilterParametersRequest = "CopyPresetLayerFilterParametersRequest",
-        CopyPresetLayerLFOParametersRequest = "CopyPresetLayerLFOParametersRequest",
-        CopyPresetLayerEnvelopeParametersRequest = "CopyPresetLayerEnvelopeParametersRequest",
-        CopyPresetLayerPatchCordsRequest = "CopyPresetLayerPatchCordsRequest",
-        CopyArpPatternRequest = "CopyArpPatternRequest",
-        CopyMasterSetupRequest = "CopyMasterSetupRequest",
-        CopyPatternRequest = "CopyPatternRequest",
-        CopySongRequest = "CopySongRequest",
-        -- remote control
-        RemoteControlOpenSessionRequest = "RemoteControlOpenSessionRequest",
-        RemoteControlCloseSessionRequest = "RemoteControlCloseSessionRequest",
-        RemoteControlButtonEventRequest = "RemoteControlButtonEventRequest",
-        RemoteControlRotaryEventRequest = "RemoteControlRotaryEventRequest",
-        RemoteControlLEDStateEventRequest = "RemoteControlLEDStateEventRequest",
-        -- misc
-        ErrorMessage = "ErrorMessage",
-        -- randomize
-        RandomizePreset = "RandomizePreset",
-        RandomizeSeedPreset4byte = "RandomizeSeedPreset4byte",
-    }
 }
 
 ---tables holding positions of elements in sysex messages
@@ -1827,7 +1724,6 @@ function MessageContracts:new(o)
     setmetatable(o, self)
     self.__index = self
 
-    self.du = DataUtils:new()
     -- values for midi message type
     ---@type table<string,string>
     self.requestTypeEnum = {
@@ -3057,26 +2953,24 @@ end
 
 ---@class MessageBuffer
 local MessageBuffer = {
-    msgSpecs = MessageSpecs:new(),
-    du = DataUtils:new(),
     sysexHeader = "",
     command = "",
     subcommand = "",
-    
+
     ---@type integer
-    
+
     totalPackets = 0,
     bytesPerMessage = 0,
     receiveHandler = function() end,
     sendHandler = function() end,
 
-    data = {
-        ---@type table<string,string>
-        PresetDump = {},
-        ---@type table<integer,string>
-        PresetDumpHeader = {},
-        SetupDump = {}
-    }
+    -- data = {
+    --     ---@type table<string,string>
+    --     PresetDump = {},
+    --     ---@type table<integer,string>
+    --     PresetDumpHeader = {},
+    --     SetupDump = {}
+    -- }
 }
 
 ---Buffer object for midi communication mitigation
@@ -3086,40 +2980,12 @@ function MessageBuffer:new(o)
   o = o or {}
   setmetatable(o,self)
   self.__index = self
-  local du = DataUtils:new()
-  self.packetCounter = 0
+--   self.packetCounter = 0
 
     ---@type table
     self.messages = {}
 
-  ---Send Closed Loop ACK with packet counter
-  ---@param counter? integer
-  ---@return string
-  function self.sendACK(counter)
-    -- if no counter provided try using the store one, else 0
-    counter = counter or self.packetCounter or 0
-    -- fetch ACK template
-    local msg = self.msgSpecs.Handshake.ACKClosedLoop
-    -- nibblize packet counter
-    local counterHex = tostring(du.removeSpaces(du.nibblize14bitToHexString(counter)))
-    -- inject nibblized packet counter into the ACK message 'pppp'
-    msg = du.replaceDataUsingMask(msg,"pppp",counterHex)
-    -- wrap message in sysex control bytes
-    msg = self.wrapWithSysexControlBytes(msg)
-    -- msg = du.replaceDataUsingMask(MessageSpecs.SysexWrapper,"XX",msg)
-    return msg
-  end
 
-  ---wrap a string in sysex control bytes
-  ---@param message any
-  ---@return string message string with sysex header and EOX control bytes
-  function self.wrapWithSysexControlBytes(message)
-    local status
-    -- wrap message in sysex control bytes
-    message, status = du.replaceDataUsingMask(MessageSpecs.SysexWrapper,"XX",message)
-    p(string.format("STATUS:[%s] MESSAGE:[%s]",status,message))
-    return message
-  end
 
   -- TODO: add logic
   function self.isSysexNonRealtime() end
@@ -3145,7 +3011,7 @@ function PresetDumpHandler:new(o)
     o = o or {}
     setmetatable(o,self)
     self.__index = self
-    local du = DataUtils:new()
+    local DU = DataUtils:new()
 
     ---Preset Dump Receiver that accumulates messages, extracts the handshake packet count and returns applicable ACKs
     ---once EOF reveived, save to buffer, clean sysex control bytes, and save to hexString(then to MemoryBlock)
@@ -3154,34 +3020,34 @@ function PresetDumpHandler:new(o)
     ---@return string status status message
     function self.presetDumpReceiverHandler(message)
         -- error checking
-        if(message == nil or #message == 0) then return SPECS.Status.ERROR end
+        if(message == nil or #message == 0) then return LOOKUP.Status.ERROR end
         -- remove spaces immediately
-        message = du.removeSpaces(message)
+        message = DU.removeSpaces(message)
 
         -- strip sysex control bytes from incomming message
         -- check if message is DumpHeader or Dump Segment & change length removed from start accordingly
         -- PresetDumpHeader
-        if(du.isStartsWithAtPosition(message, "1001",1,true)) then
-            message = du.cleanSysexUniversalMessage(message, 
-                (#MessageSpecs.Headers.BasicHeader + #MessageSpecs.Headers.PresetDumpHeaderResponse)) 
+        if(DU.isStartsWithAtPosition(message, "1001",1,true)) then
+            message = DU.cleanSysexUniversalMessage(message, 
+                (#LOOKUP.Headers.BasicHeader + #LOOKUP.Masks.Dumps.PresetDumpHeaderResponse)) 
         -- PresetDump Segment
-        elseif (du.isStartsWithAtPosition(message, "1002",1,true)) then
-            message = du.cleanSysexUniversalMessage(message, 
-                (#MessageSpecs.Headers.BasicHeader + #MessageSpecs.Headers.PresetDumpResponse))
+        elseif (DU.isStartsWithAtPosition(message, "1002",1,true)) then
+            message = DU.cleanSysexUniversalMessage(message, 
+                (#LOOKUP.Headers.BasicHeader + #LOOKUP.Masks.Dumps.PresetDumpResponse))
         -- EOF, DONE with transmission
-        elseif (du.isEndsWith(message,(MessageSpecs.Handshake.EOF .. MessageSpecs.SysexUniversal_EOX))) then
+        elseif (DU.isEndsWith(message,(LOOKUP.SyxCtl.Handshake.EOF .. LOOKUP.SyxCtl.EOX))) then
             -- do nothing, just return buffer. no ACK needed
-            return SPECS.Status.DONE
+            return LOOKUP.Status.DONE
         end
 
         -- add message to buffer stack
-        messages[#messages+1] = message
+        SYX.messageTable[#SYX.messageTable+1] = message
         -- send ack
-        MessageBuffer:new().sendACK(packetCounter)
+        MSG.sendACK(SYX.packetCounter)
         -- update packet count
-        packetCounter = packetCounter +1
+        SYX.packetCounter = SYX.packetCounter +1
 
-        return SPECS.Status.DONE
+        return LOOKUP.Status.DONE
     end
 
     ---use provided ContractTable(holding START/END positions) to parse a response string to build a MessageByteTable
@@ -3189,10 +3055,7 @@ function PresetDumpHandler:new(o)
     ---@param contractTable table table of start/end positions to be read from response string and put into byteTable
     ---@return table msgObj a message Object/byteTable storing hexStrings of 1 or more hex bytes
     function self.presetDumpHeaderResponseParser(response,contractTable)
-        -- clean spaces and remove sysex universal control bytes
-        -- local syxctl = "F0180F0055"
-        -- response = du.cleanSysexUniversalMessage(du.removeSpaces(response), syxctl)
-        local byteTable = du.stringToByteTable(response)
+        local byteTable = DU.stringToByteTable(response)
         -- use Message Contract to build MessageObject Table mapped {paramid,byte(s)}
         -- same keys used in both tables
         local msgObj = {}
@@ -3208,9 +3071,8 @@ function PresetDumpHandler:new(o)
                 end
                 -- now push combined data to the new table using same key
                 msgObj[k] = data
-                -- msgObj[k] = string.format("%s%s", byteTable[v[1]], byteTable[v[2]])
             end
-            if (du.isContains(msgObj[k],"nil") ) then 
+            if (DU.isContains(msgObj[k],"nil") ) then 
                 p(string.format("ERROR at k[%s] v[%s]",k,v))
             end
         end
@@ -3225,16 +3087,14 @@ function PresetDumpHandler:new(o)
         -- iterate the table, stripping sysex control bytes and any spaces
         -- check for even message length
         local results = {}
-        local contracts = MessageContracts:new()
 
         do --[[ PresetDumpHeader is 1st message in table ]]
             local presetHeader = presetDumpTable[1]
             local syxctlHeader = "F0180Fid551001"
-            local headerResponse = du.cleanSysexUniversalMessage(du.removeSpaces(presetDumpTable[1]), #syxctlHeader)
+            local headerResponse = DU.cleanSysexUniversalMessage(DU.removeSpaces(presetDumpTable[1]), #syxctlHeader)
             -- check message length is even, abort if not
             if(#headerResponse %2 ~= 0) then return {},string.format("response is invalid length [%s]",#headerResponse) end
-            results.headerObj = self.presetDumpHeaderResponseParser(headerResponse,contracts.PresetDumpHeader)
-            -- results.headerObj = self.presetDumpHeaderResponseParser(headerResponse)
+            results.headerObj = self.presetDumpHeaderResponseParser(headerResponse,CONTRACTS.PresetDumpHeader)
             results.headerResponse = headerResponse
             SYX.presetDump.headerResponse = headerResponse
             SYX.presetDump.headerObj = results.headerObj
@@ -3245,12 +3105,11 @@ function PresetDumpHandler:new(o)
         for i=2,#presetDumpTable do
             local syxctl = "F0180Fid551002pppp" -- +4 for packet numbers
             -- clean spaces and remove sysex universal control bytes
-            dumpResponse = dumpResponse .. du.cleanSysexUniversalMessage(du.removeSpaces(presetDumpTable[i]), #syxctl)
+            dumpResponse = dumpResponse .. DU.cleanSysexUniversalMessage(DU.removeSpaces(presetDumpTable[i]), #syxctl)
             -- check message length is even, abort if not
             if(#dumpResponse %2 ~= 0) then return {},string.format("response is invalid length [%s]",#dumpResponse) end
         end
-        results.dumpObj = self.presetDumpHeaderResponseParser( dumpResponse,contracts.PresetDump )
-        -- results.dumpObj = self.presetDumpResponseParser(dumpResponse)
+        results.dumpObj = self.presetDumpHeaderResponseParser( dumpResponse,CONTRACTS.PresetDump )
         results.dumpReponse = dumpResponse
         SYX.presetDump.dumpResponse = dumpResponse
         SYX.presetDump.dumpObj = results.dumpObj
@@ -3276,8 +3135,6 @@ function SetupDumpHandler:new(o)
     o = o or {}
     setmetatable(o,self)
     self.__index = self
-    local du = DataUtils:new()
-    -- local PresetDumpBuffer = MessageBuffer:new()
 
     ---parse response message to byteTable then create mapped object table from it using MessageContract
     ---@param response string response message
@@ -3285,7 +3142,7 @@ function SetupDumpHandler:new(o)
     function self.setupDumpResponseParser(response)
         -- clean spaces and remove sysex universal control bytes
         local syxctl = "F0180F0055"
-        response = du.cleanSysexUniversalMessage(du.removeSpaces(response), syxctl)
+        response = DU.cleanSysexUniversalMessage(DU.removeSpaces(response), syxctl)
 
         -- scrape response string to byte table with 2 chars per cell
         local byteTable = {}
@@ -3324,13 +3181,40 @@ function MessageHandler:new(o)
     self.__index = self
     -- caches incoming messages/dumps
     -- could be used to hold data so any changes made can be injected in-place without needing to rebuild message from scratch
-    local InboundMessageBuffer = {}
+    -- local InboundMessageBuffer = {}
     -- caches outgoing messages/dumps
-    local OutboundMessageBuffer = {}
+    -- local OutboundMessageBuffer = {}
     -- utility class instantiated for easy access
-    local du = DataUtils:new()
 
     do -- Preset/ROM/Bank Handling
+
+          ---Send Closed Loop ACK with packet counter
+        ---@param counter? integer
+        ---@return string
+        function self.sendACK(counter)
+            -- if no counter provided try using the store one, else 0
+            counter = counter or SYX.packetCounter or 0
+            -- fetch ACK template
+            local msg = LOOKUP.Masks.Handshake.ACKClosedLoop
+            -- nibblize packet counter
+            local counterHex = tostring(DU.removeSpaces(DU.nibblize14bitToHexString(counter)))
+            -- inject nibblized packet counter into the ACK message 'pppp'
+            msg = DU.replaceDataUsingMask(msg,"pppp",counterHex)
+            -- wrap message in sysex control bytes
+            msg = self.wrapWithSysexControlBytes(msg)
+            return msg
+        end
+
+        ---wrap a string in sysex control bytes
+        ---@param message any
+        ---@return string message string with sysex header and EOX control bytes
+        function self.wrapWithSysexControlBytes(message)
+            local status
+            -- wrap message in sysex control bytes
+            message, status = DU.replaceDataUsingMask(LOOKUP.Masks.Handshake.SysexWrapper,"XX",message)
+            p(string.format("STATUS:[%s] MESSAGE:[%s]",status,message))
+            return message
+        end
 
         ---Send Program Change using CC0,CC32,0xC#(ProgChange)
         -- - Values are nibblized LSB first
@@ -3355,7 +3239,7 @@ function MessageHandler:new(o)
             -- build message: 
             -- ParameterSetRequest 0102
             -- build ROMID hexString
-            local hexString = du.nibblize14bitToHexString(romid)
+            local hexString = DU.nibblize14bitToHexString(romid)
         end
 
         --- send PresetSelect for EditBuffer ( -1 )
@@ -3378,10 +3262,7 @@ function ReceiverHandler:new(o)
         o = o or {}
         setmetatable({},self)
         self.__index = self
-        local du = DataUtils:new()
-        local contracts = MessageContracts:new()
         local presetDumpHandler = PresetDumpHandler:new()
-        local specs = MessageSpecs:new()
         local requestTables = RequestsTable:new()
 
         function self.receiverHandlerCaller()
@@ -3401,13 +3282,13 @@ function ReceiverHandler:new(o)
         function self.receiverHandler(message)
 
             -- error checking
-            if(message == nil or #message == 0) then return SPECS.Status.ERROR end
+            if(message == nil or #message == 0) then return LOOKUP.Status.ERROR end
             -- is syex? remove control bytes
-            if ( du.isSysexUniversal(message) ) then
-                message =  du.cleanSysexUniversalMessage(message)
+            if ( DU.isSysexUniversal(message) ) then
+                message =  DU.cleanSysexUniversalMessage(message)
             else
                 -- abort for now..: support CC's later (might be inherent in Ctrlr)
-                return SPECS.Status.ERROR
+                return LOOKUP.Status.ERROR
             end
             -- now check the sysex command type
             local isFound, status  = self.detectCommandType(message)
@@ -3416,30 +3297,27 @@ function ReceiverHandler:new(o)
                 commandType = status
             else 
                 -- so nothing
-                return SPECS.Status.ERROR
+                return LOOKUP.Status.ERROR
             end
 
             print(commandType)
             -- Preset Dump / Header
-            if((commandType == specs.Matchers.PresetDumpDataClosedLoopResponse) or 
-                (commandType == specs.Matchers.PresetDumpHeaderClosedLoopResponse))
+            if((commandType == LOOKUP.Matchers.PresetDumpDataClosedLoopResponse) or 
+                (commandType == LOOKUP.Matchers.PresetDumpHeaderClosedLoopResponse))
              then
                 presetDumpHandler.presetDumpReceiverHandler(message)
-                CurrentCommand = commandType
+                SYX.CurrentCommand = commandType
             -- on EOF check the Command Type to determine type
-            elseif(commandType == specs.Matchers.EOF) then
-                if(CurrentCommand == specs.Matchers.PresetDumpDataClosedLoopResponse) then
-                    presetDumpHandler.presetDumpResponseHandler(messages)
+            elseif(commandType == LOOKUP.Matchers.EOF) then
+                if(SYX.CurrentCommand == LOOKUP.Matchers.PresetDumpDataClosedLoopResponse) then
+                    presetDumpHandler.presetDumpResponseHandler(SYX.messageTable)
+                    SYX.CurrentCommand = commandType
                 end
             elseif (true) then
-                return SPECS.Status.ERROR
+                return LOOKUP.Status.ERROR
             end
 
-
-
-
-            return SPECS.Status.OK
-
+            return LOOKUP.Status.OK
         end
 
 
@@ -3449,19 +3327,17 @@ function ReceiverHandler:new(o)
         ---@return boolean isFound
         ---@return string valueOrStatus 
         function self.detectCommandType(command)
-            local matchers = MessageSpecs:new().Matchers
-
-            -- local msg = contracts.CommandTypes.SetupDumpAck
+            local matchers = LOOKUP.Matchers
             local isFound = false
             -- search for command, then subcommand
             for k,v in pairs (matchers) do
-                if (du.isStartsWith(command,v) == true) then
+                if (DU.isStartsWith(command,v) == true) then
                     p(string.format("Found Command: [%s] from key:[%s]",matchers[k],command))
                     return true, matchers[k]
                 end
             end
             isFound = false
-            return isFound, SPECS.Status.FAIL
+            return isFound, LOOKUP.Status.FAIL
         end
 
     return self 
@@ -3472,12 +3348,15 @@ end
 --[[ MAIN CODE BLOCK]] -----------------------------------------------
 
 --[[ GLOBAL VARS ]]
-
+DU = DataUtils:new()
 SPECS = MessageSpecs:new()
 RX = ReceiverHandler:new()
 CONTRACTS = MessageContracts:new()
+MSG = MessageHandler:new()
 SYX = {
-    CurrentCommand = SPECS.Status.IDLE,
+    packetCounter = 0,
+    messageTable = {},
+    CurrentCommand = LOOKUP.Status.IDLE,
     presetDump = {},
     setupDump = {}
 }
@@ -3500,7 +3379,7 @@ local function testPresetDump()
     -- MIDI in receiver simulated comms
     -- iterate the PresetDumpResponse table, simulating midi rx/ack
     for i=1,8 do
-        MidiBuffer = presetDumpHander.presetDumpReceiverHandler(responseTable[i])
+        SYX.messageTable[#SYX.messageTable+1] = presetDumpHander.presetDumpReceiverHandler(responseTable[i])
     end
     -- response captured, now parse it for PresetDumpHeader AND PresetDump bytTables
     
@@ -3509,7 +3388,7 @@ local function testPresetDump()
 
 
 
-    local presetDump = presetDumpHander.presetDumpResponseHandler(messages)
+    local presetDump = presetDumpHander.presetDumpResponseHandler(SYX.messageTable)
     local dumpObj = presetDump.dumpObj
     local headerObj = presetDump.headerObj
 
@@ -3551,163 +3430,4 @@ MessageParser:new().parseSetupDumpResponse(setupDumpResponse)
 --[[ debug stop ]]
 p("stop")
 
-
-
-
---[[ test code
-
-    local du = DataUtils:new()
-    local dataTable = RequestsTable:new()
-    local respTable = dataTable.PresetDumpResponse
--- local dataClean = du.removeSpaces(data)
-
--- local syx = du.cleanSysexUniversalMessage(data,10)
-
--- iterate response table, strip spaces, then strip sysex universal control bytes
-local syx = {}
-for i = 1, #respTable do
-    syx[#syx + 1] = du.cleanSysexUniversalMessage(du.removeSpaces(respTable[i]), 10)
-end
-local respMessage = table.concat(syx)
-p(respMessage)
-local setupDumpResponse = du.cleanSysexUniversalMessage(du.removeSpaces(dataTable.SetupDumpResponse), 10)
-
-
-]]--
-
-        -- -- scrape response string to byte table with 2 chars per cell
-        -- local byteTable = {}
-        -- local pointer = 1
-        -- for i = 1, (#response / 2) do
-        --     byteTable[i] = string.sub(response, pointer, pointer + 1)
-        --     pointer = pointer + 2
-        -- end
-
-
-                -- self.PresetDumpHeader[1] ={1,4}      -- "aaaa", "Preset Number
-        -- self.PresetDumpHeader[2] = {5,12}    -- "bbbbbbbb", "Number of DataBytes in Bump
-        -- self.PresetDumpHeader[3] = {13,16}   -- "cccc", "Number of Preset Common General Parameters, LSB first
-        -- self.PresetDumpHeader[4] = {17,20}   -- "dddd", "Number of Reserved Parameters, LSB first.
-        -- self.PresetDumpHeader[5] = {21,24}   -- "eeee", "Number of Preset Common Effects Parameters, LSB first.
-        -- self.PresetDumpHeader[6] = {25,28}   -- "ffff", "Number of Preset Common Link Parameters, LSB first.
-        -- self.PresetDumpHeader[7] = {29,32}   -- "gggg", "Number of Preset Layers, LSB first.
-        -- self.PresetDumpHeader[8] = {33,36}   -- "hhhh", "Number of Preset Layer General Parameters, LSB first.
-        -- self.PresetDumpHeader[9] = {37,40}   -- "iiii", "Number of Preset Layer Filter Parameters, LSB first.
-        -- self.PresetDumpHeader[10] = {41,44}  -- "jjjj", "Number of Preset Layer LFO Parameters, LSB first.
-        -- self.PresetDumpHeader[11] = {45,48}  -- "kkkk", "Number of Preset Layer Envelope Parameters, LSB first.
-        -- self.PresetDumpHeader[12] = {49,52}  -- "llll", "Number of Preset Layer PatchCord Parameters, LSB first.
-        -- self.PresetDumpHeader[13] = {53,56}  -- "mmmm", "Preset ROM ID
-
---[[ unused classes ]]
-
--- ---@class MessageObjects
--- local MessageObjects = {}
--- ---Table for holding Populated Sysex Messages
--- ---@param o any
--- ---@return MessageObjects
--- function MessageObjects:new(o)
---     o = o or {}
---     setmetatable(o, self)
---     self.__index = self
---     self.DeviceInquiryMessageObject = {}
---     self.SetupDumpMessageObject = {}
---     self.PresetDumpMessageObject = {}
---     return self
--- end
-
-
--- ---@class Messages 
--- local Messages = {
---     Requests = {
---         BulkTuningDumpRequest = {},
---         ParameterEditRequest = {},
---         ParameterValueRequest = {},
---         ParamMinMaxDefaultValueRequest = {},
---         HardwareConfigurationRequest = {},
---         GenericNameRequest = {},
---         PresetDumpRequestClosedLoop = {},
---         PresetDumpRequestOpenLoop = {},
---         PresetCommonParamsDumpRequest = {},
---         PresetCommonGeneralParamsDumpRequest = {},
---         PresetCommonArpParamsDumpRequest = {},
---         PresetCommonFXParamsDumpRequest = {},
---         PresetCommonLinkParamsDumpRequest = {},
---         PresetLayerParamsDumpRequest = {},
---         PresetLayerGeneralParamsDumpRequest = {},
---         PresetLayerFilterParamsDumpRequest = {},
---         PresetLayerLFOParamsDumpRequest = {},
---         PresetLayerEnvelopeParamsDumpRequest = {},
---         PresetLayerCordParamsDumpRequest = {},
---         ProgramChangePresetMapDumpRequest = {},
---         ArpeggiatorPatternDumpRequest = {},
---         LCDScreenDumpRequestP2KAudity2K = {},
---         LCDScreenCharacterPalletRequest = {},
---         SetupDumpRequest = {},
---         GenericDumpRequest = {},
---         CopyPresetRequest = {},
---         CopyPresetCommonParametersRequest = {},
---         CopyArpParametersRequest = {},
---         CopyEffectsParametersRequestMasterorPreset = {},
---         CopyPresetLinkParametersRequest = {},
---         CopyPresetLayerRequest = {},
---         CopyPresetLayerCommonParametersRequest = {},
---         CopyPresetLayerFilterParametersRequest = {},
---         CopyPresetLayerLFOParametersRequest = {},
---         CopyPresetLayerEnvelopeParametersRequest = {},
---         CopyPresetLayerPatchCordsRequest = {},
---         CopyArpPatternRequest = {},
---         CopyMasterSetupRequest = {},
---         CopyPatternRequest = {},
---         CopySongRequest = {},
---         RemoteControlOpenSessionRequest = {},
---         RemoteControlCloseSessionRequest = {},
---         RemoteControlButtonEventRequest = {},
---         RemoteControlRotaryEventRequest = {},
---         RemoteControlLEDStateEventRequest = {},
---     },
---     Responses = {
---         DeviceInquiryResponse = {},
---         BulkTuningDumpResponse = {},
---         ParamMinMaxDefaultValueResponse = {},
---         HardwareConfigurationResponse = {},
---         PresetDumpHeaderClosedLoopResponse = {},
---         PresetDumpDataClosedLoopResponse = {},
---         PresetDumpHeaderOpenLoopResponse = {},
---         PresetDumpDataOpenLoopResponse = {},
---         PresetCommonParamsDumpDataResponse = {},
---         PresetCommonGeneralParamsDumpDataResponse = {},
---         PresetCommonArpParamsDumpDataResponse = {},
---         PresetCommonEffectsParamsDumpDataResponse = {},
---         PresetCommonLinkParamsDumpDataResponse = {},
---         PresetLayerParamsDumpDataResponse = {},
---         PresetLayerGeneralParamsDumpDataResponse = {},
---         PresetLayerFilterParamsDumpDataResponse = {},
---         PresetLayerLFOParamsDumpDataResponse = {},
---         PresetLayerEnvelopeParamsDumpDataResponse = {},
---         PresetLayerPatchcordParamsDumpDataResponse = {},
---         ProgramChangePresetMapDumpResponse = {},
---         ArpeggiatorPatternDumpResponse = {},
---         LCDScreenDumpResponseP2KAudity2K = {},
---         LCDScreenCharacterPalletResponse = {},
---         SetupDumpResponse = {},
---     },
---     Handshake = {
---         ACK = {},
---         ACKClosedLoop = {},
---         NAK = {},
---         CANCEL = {},
---         WAIT = {},
---         EOF = {},
---     },
--- }
--- ---Message List
--- ---@param o any
--- ---@return Messages
--- function Messages:new(o)
---     o = o or {}
---     setmetatable({},self)
---     self.__index = self
---     return self 
---     -- local messages = Messages:new()
--- end
 
