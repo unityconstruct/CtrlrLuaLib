@@ -1,0 +1,280 @@
+
+
+
+
+    --     --- Possible Sysex Command Type Keys
+    -- ---@enum CommandTypes
+    -- CommandTypes = {
+    --     IDLE = "IDLE",
+    --     Sysex_Start = "Sysex_Start",
+    --     SysexNRT = "SysexNRT",
+    --     --device inquiry
+    --     DeviceInquiry = "DeviceInquiry",
+    --     DeviceInquiryResponse = "DeviceInquiryResponse",
+    --     -- hw config
+    --     HardwareConfigurationResponse = "HardwareConfigurationResponse",
+    --     HardwareConfigurationRequest = "HardwareConfigurationRequest",
+    --     -- setup Dump
+    --     SetupDumpResponse = "SetupDumpResponse",
+    --     SetupDumpRequest = "SetupDumpRequest",
+    --     -- generic dump
+    --     GenericDumpRequest = "GenericDumpRequest",
+    --     GenericDump = "GenericDump",
+    --     -- tuning
+    --     BulkTuningDumpRequest = "BulkTuningDumpRequest",
+    --     BulkTuningDumpResponse = "BulkTuningDumpResponse",
+    --     SingleNoteTuningChange = "SingleNoteTuningChange",
+    --     -- master volume
+    --     MasterVolume = "MasterVolume",
+    --     -- params
+    --     ParameterEditRequest = "ParameterEditRequest",
+    --     ParameterValueRequest = "ParameterValueRequest",
+    --     ParamMinMaxDefaultValueResponse = "ParamMinMaxDefaultValueResponse",
+    --     ParamMinMaxDefaultValueRequest = "ParamMinMaxDefaultValueRequest",
+    --     -- names
+    --     GenericName = "GenericName",
+    --     GenericNameRequest = "GenericNameRequest",
+    --     RESERVED = "RESERVED",
+    --     -- preset dump
+    --     PresetDumpHeaderClosedLoopResponse = "PresetDumpHeaderClosedLoopResponse",
+    --     PresetDumpDataClosedLoopResponse = "PresetDumpDataClosedLoopResponse",
+    --     PresetDumpHeaderOpenLoopResponse = "PresetDumpHeaderOpenLoopResponse",
+    --     PresetDumpDataOpenLoopResponse = "PresetDumpDataOpenLoopResponse",
+    --     -- preset common
+    --     PresetCommonParamsDumpDataResponse = "PresetCommonParamsDumpDataResponse",
+    --     PresetCommonGeneralParamsDumpDataResponse = "PresetCommonGeneralParamsDumpDataResponse",
+    --     PresetCommonArpParamsDumpDataResponse = "PresetCommonArpParamsDumpDataResponse",
+    --     PresetCommonEffectsParamsDumpDataResponse = "PresetCommonEffectsParamsDumpDataResponse",
+    --     PresetCommonLinkParamsDumpDataResponse = "PresetCommonLinkParamsDumpDataResponse",
+    --     -- preset layer
+    --     PresetLayerParamsDumpDataResponse = "PresetLayerParamsDumpDataResponse",
+    --     PresetLayerGeneralParamsDumpDataResponse = "PresetLayerGeneralParamsDumpDataResponse",
+    --     PresetLayerFilterParamsDumpDataResponse = "PresetLayerFilterParamsDumpDataResponse",
+    --     PresetLayerLFOParamsDumpDataResponse = "PresetLayerLFOParamsDumpDataResponse",
+    --     PresetLayerEnvelopeParamsDumpDataResponse = "PresetLayerEnvelopeParamsDumpDataResponse",
+    --     PresetLayerPatchcordParamsDumpDataResponse = "PresetLayerPatchcordParamsDumpDataResponse",
+    --     reserved = "reserved",
+    --     -- preset dump request
+    --     PresetDumpRequestClosedLoop = "PresetDumpRequestClosedLoop",
+    --     PresetDumpRequestOpenLoop = "PresetDumpRequestOpenLoop",
+    --     PresetCommonParamsDumpRequest = "PresetCommonParamsDumpRequest",
+    --     PresetCommonGeneralParamsDumpRequest = "PresetCommonGeneralParamsDumpRequest",
+    --     PresetCommonArpParamsDumpRequest = "PresetCommonArpParamsDumpRequest",
+    --     PresetCommonFXParamsDumpRequest = "PresetCommonFXParamsDumpRequest",
+    --     PresetCommonLinkParamsDumpRequest = "PresetCommonLinkParamsDumpRequest",
+    --     PresetLayerParamsDumpRequest = "PresetLayerParamsDumpRequest",
+    --     PresetLayerGeneralParamsDumpRequest = "PresetLayerGeneralParamsDumpRequest",
+    --     PresetLayerFilterParamsDumpRequest = "PresetLayerFilterParamsDumpRequest",
+    --     PresetLayerLFOParamsDumpRequest = "PresetLayerLFOParamsDumpRequest",
+    --     PresetLayerEnvelopeParamsDumpRequest = "PresetLayerEnvelopeParamsDumpRequest",
+    --     PresetLayerCordParamsDumpRequest = "PresetLayerCordParamsDumpRequest",
+    --     -- prog change map
+    --     ProgramChangePresetMapDumpResponse = "ProgramChangePresetMapDumpResponse",
+    --     ProgramChangePresetMapDumpRequest = "ProgramChangePresetMapDumpRequest",
+    --     -- arp patterns
+    --     ArpeggiatorPatternDumpResponse = "ArpeggiatorPatternDumpResponse",
+    --     ArpeggiatorPatternDumpRequest = "ArpeggiatorPatternDumpRequest",
+    --     -- lcd
+    --     LCDScreenDumpResponseP2KAudity2K = "LCDScreenDumpResponseP2KAudity2K",
+    --     LCDScreenDumpRequestP2KAudity2K = "LCDScreenDumpRequestP2KAudity2K",
+    --     LCDScreenCharacterPalletResponse = "LCDScreenCharacterPalletResponse",
+    --     LCDScreenCharacterPalletRequest = "LCDScreenCharacterPalletRequest",
+    --     --handshake
+    --     ACK = "ACK",
+    --     ACKClosedLoopwithPacketCounter = "ACKClosedLoopwithPacketCounter",
+    --     NAK = "NAK",
+    --     CANCEL = "CANCEL",
+    --     WAIT = "WAIT",
+    --     EOF = "EOF",
+    --     -- copy
+    --     CopyPresetRequest = "CopyPresetRequest",
+    --     CopyPresetCommonParametersRequest = "CopyPresetCommonParametersRequest",
+    --     CopyArpParametersRequest = "CopyArpParametersRequest",
+    --     CopyEffectsParametersRequestMasterorPreset = "CopyEffectsParametersRequestMasterorPreset",
+    --     CopyPresetLinkParametersRequest = "CopyPresetLinkParametersRequest",
+    --     CopyPresetLayerRequest = "CopyPresetLayerRequest",
+    --     CopyPresetLayerCommonParametersRequest = "CopyPresetLayerCommonParametersRequest",
+    --     CopyPresetLayerFilterParametersRequest = "CopyPresetLayerFilterParametersRequest",
+    --     CopyPresetLayerLFOParametersRequest = "CopyPresetLayerLFOParametersRequest",
+    --     CopyPresetLayerEnvelopeParametersRequest = "CopyPresetLayerEnvelopeParametersRequest",
+    --     CopyPresetLayerPatchCordsRequest = "CopyPresetLayerPatchCordsRequest",
+    --     CopyArpPatternRequest = "CopyArpPatternRequest",
+    --     CopyMasterSetupRequest = "CopyMasterSetupRequest",
+    --     CopyPatternRequest = "CopyPatternRequest",
+    --     CopySongRequest = "CopySongRequest",
+    --     -- remote control
+    --     RemoteControlOpenSessionRequest = "RemoteControlOpenSessionRequest",
+    --     RemoteControlCloseSessionRequest = "RemoteControlCloseSessionRequest",
+    --     RemoteControlButtonEventRequest = "RemoteControlButtonEventRequest",
+    --     RemoteControlRotaryEventRequest = "RemoteControlRotaryEventRequest",
+    --     RemoteControlLEDStateEventRequest = "RemoteControlLEDStateEventRequest",
+    --     -- misc
+    --     ErrorMessage = "ErrorMessage",
+    --     -- randomize
+    --     RandomizePreset = "RandomizePreset",
+    --     RandomizeSeedPreset4byte = "RandomizeSeedPreset4byte",
+    -- }
+
+
+    
+
+
+
+
+--[[ test code
+
+    local du = DataUtils:new()
+    local dataTable = RequestsTable:new()
+    local respTable = dataTable.PresetDumpResponse
+-- local dataClean = du.removeSpaces(data)
+
+-- local syx = du.cleanSysexUniversalMessage(data,10)
+
+-- iterate response table, strip spaces, then strip sysex universal control bytes
+local syx = {}
+for i = 1, #respTable do
+    syx[#syx + 1] = du.cleanSysexUniversalMessage(du.removeSpaces(respTable[i]), 10)
+end
+local respMessage = table.concat(syx)
+p(respMessage)
+local setupDumpResponse = du.cleanSysexUniversalMessage(du.removeSpaces(dataTable.SetupDumpResponse), 10)
+
+
+]]--
+
+        -- -- scrape response string to byte table with 2 chars per cell
+        -- local byteTable = {}
+        -- local pointer = 1
+        -- for i = 1, (#response / 2) do
+        --     byteTable[i] = string.sub(response, pointer, pointer + 1)
+        --     pointer = pointer + 2
+        -- end
+
+
+                -- self.PresetDumpHeader[1] ={1,4}      -- "aaaa", "Preset Number
+        -- self.PresetDumpHeader[2] = {5,12}    -- "bbbbbbbb", "Number of DataBytes in Bump
+        -- self.PresetDumpHeader[3] = {13,16}   -- "cccc", "Number of Preset Common General Parameters, LSB first
+        -- self.PresetDumpHeader[4] = {17,20}   -- "dddd", "Number of Reserved Parameters, LSB first.
+        -- self.PresetDumpHeader[5] = {21,24}   -- "eeee", "Number of Preset Common Effects Parameters, LSB first.
+        -- self.PresetDumpHeader[6] = {25,28}   -- "ffff", "Number of Preset Common Link Parameters, LSB first.
+        -- self.PresetDumpHeader[7] = {29,32}   -- "gggg", "Number of Preset Layers, LSB first.
+        -- self.PresetDumpHeader[8] = {33,36}   -- "hhhh", "Number of Preset Layer General Parameters, LSB first.
+        -- self.PresetDumpHeader[9] = {37,40}   -- "iiii", "Number of Preset Layer Filter Parameters, LSB first.
+        -- self.PresetDumpHeader[10] = {41,44}  -- "jjjj", "Number of Preset Layer LFO Parameters, LSB first.
+        -- self.PresetDumpHeader[11] = {45,48}  -- "kkkk", "Number of Preset Layer Envelope Parameters, LSB first.
+        -- self.PresetDumpHeader[12] = {49,52}  -- "llll", "Number of Preset Layer PatchCord Parameters, LSB first.
+        -- self.PresetDumpHeader[13] = {53,56}  -- "mmmm", "Preset ROM ID
+
+--[[ unused classes ]]
+
+-- ---@class MessageObjects
+-- local MessageObjects = {}
+-- ---Table for holding Populated Sysex Messages
+-- ---@param o any
+-- ---@return MessageObjects
+-- function MessageObjects:new(o)
+--     o = o or {}
+--     setmetatable(o, self)
+--     self.__index = self
+--     self.DeviceInquiryMessageObject = {}
+--     self.SetupDumpMessageObject = {}
+--     self.PresetDumpMessageObject = {}
+--     return self
+-- end
+
+
+-- ---@class Messages 
+-- local Messages = {
+--     Requests = {
+--         BulkTuningDumpRequest = {},
+--         ParameterEditRequest = {},
+--         ParameterValueRequest = {},
+--         ParamMinMaxDefaultValueRequest = {},
+--         HardwareConfigurationRequest = {},
+--         GenericNameRequest = {},
+--         PresetDumpRequestClosedLoop = {},
+--         PresetDumpRequestOpenLoop = {},
+--         PresetCommonParamsDumpRequest = {},
+--         PresetCommonGeneralParamsDumpRequest = {},
+--         PresetCommonArpParamsDumpRequest = {},
+--         PresetCommonFXParamsDumpRequest = {},
+--         PresetCommonLinkParamsDumpRequest = {},
+--         PresetLayerParamsDumpRequest = {},
+--         PresetLayerGeneralParamsDumpRequest = {},
+--         PresetLayerFilterParamsDumpRequest = {},
+--         PresetLayerLFOParamsDumpRequest = {},
+--         PresetLayerEnvelopeParamsDumpRequest = {},
+--         PresetLayerCordParamsDumpRequest = {},
+--         ProgramChangePresetMapDumpRequest = {},
+--         ArpeggiatorPatternDumpRequest = {},
+--         LCDScreenDumpRequestP2KAudity2K = {},
+--         LCDScreenCharacterPalletRequest = {},
+--         SetupDumpRequest = {},
+--         GenericDumpRequest = {},
+--         CopyPresetRequest = {},
+--         CopyPresetCommonParametersRequest = {},
+--         CopyArpParametersRequest = {},
+--         CopyEffectsParametersRequestMasterorPreset = {},
+--         CopyPresetLinkParametersRequest = {},
+--         CopyPresetLayerRequest = {},
+--         CopyPresetLayerCommonParametersRequest = {},
+--         CopyPresetLayerFilterParametersRequest = {},
+--         CopyPresetLayerLFOParametersRequest = {},
+--         CopyPresetLayerEnvelopeParametersRequest = {},
+--         CopyPresetLayerPatchCordsRequest = {},
+--         CopyArpPatternRequest = {},
+--         CopyMasterSetupRequest = {},
+--         CopyPatternRequest = {},
+--         CopySongRequest = {},
+--         RemoteControlOpenSessionRequest = {},
+--         RemoteControlCloseSessionRequest = {},
+--         RemoteControlButtonEventRequest = {},
+--         RemoteControlRotaryEventRequest = {},
+--         RemoteControlLEDStateEventRequest = {},
+--     },
+--     Responses = {
+--         DeviceInquiryResponse = {},
+--         BulkTuningDumpResponse = {},
+--         ParamMinMaxDefaultValueResponse = {},
+--         HardwareConfigurationResponse = {},
+--         PresetDumpHeaderClosedLoopResponse = {},
+--         PresetDumpDataClosedLoopResponse = {},
+--         PresetDumpHeaderOpenLoopResponse = {},
+--         PresetDumpDataOpenLoopResponse = {},
+--         PresetCommonParamsDumpDataResponse = {},
+--         PresetCommonGeneralParamsDumpDataResponse = {},
+--         PresetCommonArpParamsDumpDataResponse = {},
+--         PresetCommonEffectsParamsDumpDataResponse = {},
+--         PresetCommonLinkParamsDumpDataResponse = {},
+--         PresetLayerParamsDumpDataResponse = {},
+--         PresetLayerGeneralParamsDumpDataResponse = {},
+--         PresetLayerFilterParamsDumpDataResponse = {},
+--         PresetLayerLFOParamsDumpDataResponse = {},
+--         PresetLayerEnvelopeParamsDumpDataResponse = {},
+--         PresetLayerPatchcordParamsDumpDataResponse = {},
+--         ProgramChangePresetMapDumpResponse = {},
+--         ArpeggiatorPatternDumpResponse = {},
+--         LCDScreenDumpResponseP2KAudity2K = {},
+--         LCDScreenCharacterPalletResponse = {},
+--         SetupDumpResponse = {},
+--     },
+--     Handshake = {
+--         ACK = {},
+--         ACKClosedLoop = {},
+--         NAK = {},
+--         CANCEL = {},
+--         WAIT = {},
+--         EOF = {},
+--     },
+-- }
+-- ---Message List
+-- ---@param o any
+-- ---@return Messages
+-- function Messages:new(o)
+--     o = o or {}
+--     setmetatable({},self)
+--     self.__index = self
+--     return self 
+--     -- local messages = Messages:new()
+-- end
+
