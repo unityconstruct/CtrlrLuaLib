@@ -5,16 +5,36 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "lua",
+            
+            "name": "Debug Lua Interpreter",
+            "type": "lua-local",
             "request": "launch",
-            "name": "Debug",
-            "program": "${workspaceFolder}/CtrlrLuaLib/sandbox/dump-parser.lua"
+            "program": {
+                "lua": "lua5.1",
+                // "lua": "lua",
+                "file": "${workspaceFolder}/ctrlib/CtrlrApp.lua"
+            }
         },
         {
-            "type": "lua",
+            
+            "name": "FileDebug",
+            "type": "lua-local",
             "request": "launch",
-            "name": "DebugFile",
-            "program": "${file}"
+            "program": {
+                "lua": "lua5.1",
+                // "lua": "lua",
+                "file": "${file}"
+            }
+        },
+        {
+            "name": "Debug Custom Lua Environment",
+            "type": "lua-local",
+            "request": "launch",
+            "program": {
+                "command": "command"
+            },
+            "args": []
         }
     ]
 }
+
